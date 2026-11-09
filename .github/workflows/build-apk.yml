@@ -20,6 +20,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Install unzip
+        run: apt-get update && apt-get install -y unzip
+
       - name: Download Android command line tools
         run: |
           set -e
@@ -33,19 +36,17 @@ jobs:
       - name: Accept all SDK licenses
         run: |
           set -e
-          SDK_ROOT=$HOME/android-sdk
-          yes | $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT --licenses
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
 
       - name: Install SDK components
         run: |
           set -e
-          SDK_ROOT=$HOME/android-sdk
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platform-tools"
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platforms;android-34"
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "build-tools;34.0.0"
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "ndk;26.1.10909125"
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "cmake;3.22.1"
-          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT --list_installed
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platforms;android-34"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "build-tools;34.0.0"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "ndk;26.1.10909125"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "cmake;3.22.1"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --list_installed
 
       - name: Set environment variables
         run: |
@@ -62,7 +63,6 @@ jobs:
       - name: Create local.properties
         run: |
           echo "sdk.dir=$HOME/android-sdk" > local.properties
-          echo "ndk.dir=$HOME/android-sdk/ndk/26.1.10909125" >> local.properties
           cat local.properties
 
       - name: Build debug APK
