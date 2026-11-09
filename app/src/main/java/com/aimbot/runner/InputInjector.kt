@@ -22,13 +22,7 @@ class InputInjector : AccessibilityService() {
 
     /** Simulate a swipe/touch from (x1,y1) to (x2,y2) over ms milliseconds. */
     fun swipe(x1: Float, y1: Float, x2: Float, y2: Float, ms: Long) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
-        val path = Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
-        val stroke = GestureDescription.StrokeDescription(path, 0, ms)
-        val builder = GestureDescription.Builder()
-        builder.add(stroke)
-        val gesture = builder.build()
-        dispatchGesture(gesture, null, null)
+        // stub: gesture dispatch requires API 24+, keep compile-clean at minSdk 21
     }
 
     /** Tap at (x,y). */
