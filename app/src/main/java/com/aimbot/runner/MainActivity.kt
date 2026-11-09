@@ -151,7 +151,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        handler.postDelayed(statusRunnable, 1000)
+        val r = statusRunnable
+        if (r != null) handler.postDelayed(r, 1000)
     }
 
     private fun startFloatingIcon() {
@@ -173,7 +174,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(statusRunnable)
+        val r = statusRunnable
+        if (r != null) handler.removeCallbacks(r)
         runner.stop()
     }
 }

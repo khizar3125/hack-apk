@@ -39,7 +39,7 @@ class FloatingIconService : Service() {
 
         floatingIcon = ImageView(this)
         floatingIcon?.setImageResource(android.R.drawable.ic_dialog_info)
-        floatingIcon?.setBackgroundColor(0xFF66FCF1)
+        floatingIcon?.setBackgroundColor(0xFF66FCF1.toInt())
         floatingIcon?.layoutParams = ViewGroup.LayoutParams(80, 80)
 
         floatingIcon?.setOnTouchListener { _, event ->

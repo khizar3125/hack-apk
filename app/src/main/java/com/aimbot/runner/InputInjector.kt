@@ -25,7 +25,9 @@ class InputInjector : AccessibilityService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         val path = Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
         val stroke = GestureDescription.StrokeDescription(path, 0, ms)
-        val gesture = GestureDescription.Builder().add(stroke).build()
+        val builder = GestureDescription.Builder()
+        builder.add(stroke)
+        val gesture = builder.build()
         dispatchGesture(gesture, null, null)
     }
 
