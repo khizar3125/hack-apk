@@ -91,9 +91,8 @@ class MainActivity : AppCompatActivity() {
         // SYSTEM_ALERT_WINDOW cannot be requested via ActivityCompat.
         // Check and open overlay settings if not granted.
         if (!android.provider.Settings.canDrawOverlays(this)) {
-            val intent = android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION
-                .let { android.net.Uri.parse("package:${packageName}") }
-                .let { android.content.Intent(it, it) }
+            val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName"))
             startActivity(intent)
         }
     }
@@ -152,7 +151,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        handler.postDelayed(statusRunnable!!, 1000)
+        handler.postDelayed(statusRunnable, 1000)
     }
 
     private fun startFloatingIcon() {

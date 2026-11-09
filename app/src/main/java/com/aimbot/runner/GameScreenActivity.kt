@@ -86,7 +86,7 @@ class GameScreenActivity : AppCompatActivity() {
         val cb = CheckBox(this)
         cb.text = label
         cb.isChecked = checked
-        cb.setTextColor(0xFFFFFFFF)
+        cb.setTextColor(-1)
         cb.tag = key
         binding.container.addView(cb)
     }
@@ -96,7 +96,7 @@ class GameScreenActivity : AppCompatActivity() {
         row.orientation = LinearLayout.HORIZONTAL
         val tv = TextView(this)
         tv.text = "$label: ${String.format("%.1f", value)}"
-        tv.textColor = 0xFFFFFFFF
+        tv.setTextColor(-1)
         tv.layoutParams = LinearLayout.LayoutParams(200, LinearLayout.LayoutParams.WRAP_CONTENT)
         val sb = SeekBar(this)
         sb.tag = key // tag stays as the config key String
@@ -120,7 +120,7 @@ class GameScreenActivity : AppCompatActivity() {
     private fun addSpinner(label: String, key: String, items: Array<String>, selected: Int) {
         val tv = TextView(this)
         tv.text = label
-        tv.textColor = 0xFFFFFFFF
+        tv.setTextColor(-1)
         binding.container.addView(tv)
         val sp = Spinner(this)
         sp.tag = key

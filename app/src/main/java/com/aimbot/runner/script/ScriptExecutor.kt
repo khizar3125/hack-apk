@@ -85,9 +85,9 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startAimbot(key: String, game: GameConfig, cfg: JSONObject, screenW: Int, screenH: Int) {
         val thread = Thread {
-            val fov = cfg.optFloat("fov", 90f)
-            val smooth = cfg.optFloat("smooth", 1.0f)
-            val aimFov = cfg.optFloat("aimFov", 80f)
+            val fov = cfg.optDouble("fov", 90.0).toFloat()
+            val smooth = cfg.optDouble("smooth", 1.0).toFloat()
+            val aimFov = cfg.optDouble("aimFov", 80.0).toFloat()
             val autoFire = cfg.optBoolean("autoFire", true)
             val bone = cfg.optString("bone", "head")
 
@@ -115,9 +115,9 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             val name = cfg.optBoolean("name", true)
             val health = cfg.optBoolean("health", true)
             val snapline = cfg.optBoolean("snapline", true)
-            val fov = cfg.optFloat("fov", 90f)
-            val smooth = cfg.optFloat("smooth", 1.0f)
-            val aimFov = cfg.optFloat("aimFov", 80f)
+            val fov = cfg.optDouble("fov", 90.0).toFloat()
+            val smooth = cfg.optDouble("smooth", 1.0).toFloat()
+            val aimFov = cfg.optDouble("aimFov", 80.0).toFloat()
 
             while (active[key] == true && !Thread.interrupted()) {
                 try {
@@ -154,7 +154,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startFly(key: String, cfg: JSONObject) {
         val thread = Thread {
-            val speed = cfg.optFloat("flySpeed", 5.0f)
+            val speed = cfg.optDouble("flySpeed", 5.0).toFloat()
             while (active[key] == true && !Thread.interrupted()) {
                 NativeBridge.nativeBypass(1) // handle_obfuscate for position edits
                 Thread.sleep(100)
@@ -166,7 +166,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startSpeed(key: String, cfg: JSONObject) {
         val thread = Thread {
-            val multiplier = cfg.optFloat("multiplier", 2.0f)
+            val multiplier = cfg.optDouble("multiplier", 2.0).toFloat()
             while (active[key] == true && !Thread.interrupted()) {
                 NativeBridge.nativeBypass(1)
                 Thread.sleep(100)
@@ -222,7 +222,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startVehicleSpeed(key: String, cfg: JSONObject) {
         val thread = Thread {
-            val multiplier = cfg.optFloat("multiplier", 2.0f)
+            val multiplier = cfg.optDouble("multiplier", 2.0).toFloat()
             while (active[key] == true && !Thread.interrupted()) {
                 NativeBridge.nativeBypass(1)
                 Thread.sleep(100)
@@ -256,7 +256,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startCoinMagnet(key: String, cfg: JSONObject) {
         val thread = Thread {
-            val radius = cfg.optFloat("radius", 10.0f)
+            val radius = cfg.optDouble("radius", 10.0).toFloat()
             while (active[key] == true && !Thread.interrupted()) {
                 NativeBridge.nativeBypass(2)
                 Thread.sleep(100)
@@ -290,7 +290,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private fun startKillRange(key: String, cfg: JSONObject) {
         val thread = Thread {
-            val range = cfg.optFloat("range", 5.0f)
+            val range = cfg.optDouble("range", 5.0).toFloat()
             while (active[key] == true && !Thread.interrupted()) {
                 NativeBridge.nativeBypass(0)
                 Thread.sleep(100)

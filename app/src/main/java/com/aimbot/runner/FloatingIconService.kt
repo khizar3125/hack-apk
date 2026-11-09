@@ -11,7 +11,7 @@ import android.widget.ImageView
 class FloatingIconService : Service() {
 
     private var windowManager: WindowManager? = null
-    private var floatingIcon: View? = null
+    private var floatingIcon: ImageView? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createFloatingIcon()

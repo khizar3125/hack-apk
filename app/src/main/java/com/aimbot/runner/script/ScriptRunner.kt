@@ -96,9 +96,9 @@ class ScriptRunner(private val context: Context) {
             offs.optLong("camera", 0x16F0B80),
             offs.optLong("entityList", 0x1720000),
             offs.optInt("maxEnt", 64),
-            offs.optFloat("fov", 90f),
-            offs.optFloat("smooth", 1.0f),
-            offs.optFloat("aimFov", 80f),
+            offs.optDouble("fov", 90.0).toFloat(),
+            offs.optDouble("smooth", 1.0).toFloat(),
+            offs.optDouble("aimFov", 80.0).toFloat(),
             offs.optLong("teamOff", 0x2E8),
             offs.optLong("healthOff", 0x2D0),
             offs.optLong("posOff", 0x138)
@@ -143,9 +143,9 @@ class ScriptRunner(private val context: Context) {
 
     private fun aimLoop(screenW: Int, screenH: Int, script: ScriptConfig) {
         val cfg = script.config ?: JSONObject()
-        val fov = cfg.optFloat("fov", 90f)
-        val smooth = cfg.optFloat("smooth", 1.0f)
-        val aimFov = cfg.optFloat("aimFov", 80f)
+        val fov = cfg.optDouble("fov", 90.0).toFloat()
+        val smooth = cfg.optDouble("smooth", 1.0).toFloat()
+        val aimFov = cfg.optDouble("aimFov", 80.0).toFloat()
 
         while (running && !Thread.currentThread().isInterrupted) {
             try {

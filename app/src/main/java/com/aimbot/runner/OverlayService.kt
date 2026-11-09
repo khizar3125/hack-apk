@@ -72,13 +72,13 @@ class OverlayService : Service() {
             color = Color.RED
             strokeWidth = 4f
             style = Paint.Style.STROKE
-            antiAlias = true
+            isAntiAlias = true
         }
         private val snapPaint = Paint().apply {
             color = Color.CYAN
             strokeWidth = 2f
             style = Paint.Style.STROKE
-            antiAlias = true
+            isAntiAlias = true
         }
         private var targetX = 0f
         private var targetY = 0f
