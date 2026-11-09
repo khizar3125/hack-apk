@@ -5,6 +5,4 @@
     android:accessibilityFlags="flagDefault|flagRequestEnhancedWebAccessibility|flagReportViewIds"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
-    android:canPerformTouchEvents="true"
-    android:timeoutMs="100"
     android:settingsActivity="com.aimbot.runner.MainActivity" />
