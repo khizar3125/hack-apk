@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,33 +18,27 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install unzip
-        run: apt-get update && apt-get install -y unzip
-
       - name: Download Android command line tools
         run: |
-          set -e
-          SDK_ROOT=$HOME/android-sdk
-          mkdir -p $SDK_ROOT/cmdline-tools
-          curl -fsSL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -o -q /tmp/cmdline-tools.zip -d $SDK_ROOT/cmdline-tools
-          mv $SDK_ROOT/cmdline-tools/cmdline-tools $SDK_ROOT/cmdline-tools/latest
-          ls $SDK_ROOT/cmdline-tools/latest/bin/
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -fsSL -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -o tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+          ls $HOME/android-sdk/cmdline-tools/latest/bin/
 
-      - name: Accept all SDK licenses
+      - name: Accept SDK licenses
         run: |
-          set -e
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --licenses
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Install SDK components
         run: |
-          set -e
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platform-tools"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "platforms;android-34"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "build-tools;34.0.0"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "ndk;26.1.10909125"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk "cmake;3.22.1"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android-sdk --list_installed
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "ndk;26.1.10909125"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "cmake;3.22.1"
 
       - name: Set environment variables
         run: |
@@ -55,34 +47,18 @@ jobs:
           echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/26.1.10909125" >> $GITHUB_ENV
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
 
-      - name: Generate Gradle wrapper
-        run: |
-          gradle wrapper --gradle-version 8.11.1
-          chmod +x gradlew
-
       - name: Create local.properties
         run: |
           echo "sdk.dir=$HOME/android-sdk" > local.properties
           cat local.properties
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: runner-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: Upload build logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-failure-logs
-          path: |
-            app/build/reports/**
-            app/build/outputs/**
-            ~/.gradle/**
-          retention-days: 7
