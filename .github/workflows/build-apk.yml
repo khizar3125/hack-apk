@@ -52,9 +52,13 @@ jobs:
           echo "sdk.dir=$HOME/android-sdk" > local.properties
           cat local.properties
 
+      - name: Generate Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+
       - name: Build debug APK
         run: |
-          chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
