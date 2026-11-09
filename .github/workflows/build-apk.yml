@@ -22,22 +22,35 @@ jobs:
 
       - name: Download Android command line tools
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
-          unzip -q /tmp/cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          set -e
+          SDK_ROOT=$HOME/android-sdk
+          mkdir -p $SDK_ROOT/cmdline-tools
+          curl -fsSL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -o -q /tmp/cmdline-tools.zip -d $SDK_ROOT/cmdline-tools
+          mv $SDK_ROOT/cmdline-tools/cmdline-tools $SDK_ROOT/cmdline-tools/latest
+          ls $SDK_ROOT/cmdline-tools/latest/bin/
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.1.8937393" >> $GITHUB_ENV
+          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
 
       - name: Accept licenses and install components
-        env:
-          ANDROID_HOME: $HOME/android-sdk
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
-            "ndk;25.1.8937393" \
-            "cmake;3.22.1"
+          set -e
+          SDK_ROOT=$HOME/android-sdk
+          mkdir -p $SDK_ROOT/licenses
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > $SDK_ROOT/licenses/android-sdk-license
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $SDK_ROOT/licenses/android-sdk-preview-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $SDK_ROOT/licenses/android-sdk-license
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platform-tools"
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platforms;android-34"
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "build-tools;34.0.0"
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "ndk;25.1.8937393"
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "cmake;3.22.1"
+          $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT --list_installed
 
       - name: Generate Gradle wrapper
         run: |
@@ -45,18 +58,12 @@ jobs:
           chmod +x gradlew
 
       - name: Create local.properties
-        env:
-          ANDROID_HOME: $HOME/android-sdk
         run: |
-          NDK_DIR=$ANDROID_HOME/ndk/25.1.8937393
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          echo "ndk.dir=$NDK_DIR" >> local.properties
+          echo "sdk.dir=$HOME/android-sdk" > local.properties
+          echo "ndk.dir=$HOME/android-sdk/ndk/25.1.8937393" >> local.properties
           cat local.properties
 
       - name: Build debug APK
-        env:
-          ANDROID_HOME: $HOME/android-sdk
-          ANDROID_NDK_HOME: $HOME/android-sdk/ndk/25.1.8937393
         run: ./gradlew assembleDebug --stacktrace --info
 
       - name: Upload APK artifact
