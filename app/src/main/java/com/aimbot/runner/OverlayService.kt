@@ -6,9 +6,11 @@ import android.graphics.*
 import android.os.IBinder
 import android.view.*
 import android.widget.LinearLayout
-import com.aimbot.runner.script.AimResult
-
 class OverlayService : Service() {
+
+    companion object {
+        var instance: OverlayService? = null
+    }
 
     private lateinit var windowManager: WindowManager
     private var overlayView: OverlayView? = null
@@ -16,7 +18,14 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+    }
+
+    override fun onDestroy() {
+        instance = null
+        hideOverlay()
+        super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -51,7 +60,6 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params!!.gravity = Gravity.TOP or Gravity.LEFT
-        params!!.setTitle("Aimbot Overlay")
         windowManager.addView(overlayView!!, params!!)
     }
 

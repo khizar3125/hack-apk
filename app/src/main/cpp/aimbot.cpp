@@ -9,6 +9,10 @@
 #include <cmath>
 #include <cstring>
 #include <algorithm>
+#include <cctype>
+#include <ctime>
+#include <cstdlib>
+#include <cstdint>
 #include <sys/ptrace.h>
 #include <sys/uio.h>
 
@@ -25,6 +29,18 @@ static uintptr_t moduleBase = 0;
 static bool running = false;
 static bool bypassActive = false;
 static uint64_t lastTick = 0;
+
+// Per-game offsets passed from JSON (fallback to hardcoded defaults)
+static uintptr_t offLocalPlayer = 0x16F0A00;
+static uintptr_t offCamera = 0x16F0B80;
+static uintptr_t offEntityList = 0x1720000;
+static int offMaxEnt = 64;
+static float offFov = 90.0f;
+static float offSmooth = 1.0f;
+static float offAimFov = 80.0f;
+static int offTeam = 0x2E8;
+static int offHealth = 0x2D0;
+static int offPos = 0x138;
 
 static std::string readLine(const std::string& path) {
     std::ifstream f(path);
@@ -89,6 +105,23 @@ static bool readRemote(pid_t pid, uintptr_t addr, void* out, size_t size) {
     return ok;
 }
 
+static bool writeRemote(pid_t pid, uintptr_t addr, const void* data, size_t size) {
+    if (pid == 0) return false;
+    std::string memPath = "/proc/" + std::to_string(pid) + "/mem";
+    std::ofstream mem(memPath, std::ios::binary);
+    if (!mem.is_open()) return false;
+    mem.seekp(static_cast<std::streamoff>(addr));
+    mem.write(static_cast<const char*>(data), static_cast<std::streamsize>(size));
+    bool ok = mem.good();
+    mem.close();
+    return ok;
+}
+
+template <typename T>
+static bool writeRemote(pid_t pid, uintptr_t addr, T val) {
+    return writeRemote(pid, addr, &val, sizeof(T));
+}
+
 template <typename T>
 static T readRemote(pid_t pid, uintptr_t addr) {
     T v{};
@@ -100,20 +133,31 @@ static T readRemote(pid_t pid, uintptr_t addr) {
 
 static void scrambleSignature(pid_t pid, uintptr_t addr, size_t len) {
     // XOR a small region with a rotating key so signature scanners mismatch.
+    // Reads then writes back via /proc/pid/mem so the change lands in the target.
+    std::vector<uint8_t> buf(len);
+    if (!readRemote(pid, addr, buf.data(), len)) {
+        LOGE("scrambleSignature read failed at %p", reinterpret_cast<void*>(addr));
+        return;
+    }
     uint8_t key = 0xA5;
     for (size_t i = 0; i < len; i++) {
-        uint8_t cur = readRemote<uint8_t>(pid, addr + i);
-        uint8_t xored = cur ^ key;
-        // write back via ptrace is complex; we only log intent here.
+        buf[i] ^= key;
         key = static_cast<uint8_t>(key * 31 + 7);
     }
-    LOGI("signature_scramble applied at %p len=%zu", reinterpret_cast<void*>(addr), len);
+    if (!writeRemote(pid, addr, buf.data(), len)) {
+        LOGE("scrambleSignature write failed at %p", reinterpret_cast<void*>(addr));
+        return;
+    }
+    LOGI("signature_scramble written at %p len=%zu", reinterpret_cast<void*>(addr), len);
 }
 
 static void obfuscateHandle(pid_t pid, uintptr_t handleAddr) {
     // Flip low bit of a handle pointer so integrity checks on raw handles fail to match.
     uintptr_t h = readRemote<uintptr_t>(pid, handleAddr);
-    LOGI("handle_obfuscate: handle=%p", reinterpret_cast<void*>(h));
+    if (h != 0) {
+        writeRemote(pid, handleAddr, h ^ 1u);
+        LOGI("handle_obfuscate: handle=%p -> %p", reinterpret_cast<void*>(h), reinterpret_cast<void*>(h ^ 1u));
+    }
 }
 
 static void applySleepJitter() {
@@ -122,8 +166,13 @@ static void applySleepJitter() {
 }
 
 static void patchAntiTamper(pid_t pid, uintptr_t addr) {
-    // NOP a 4-byte anti-tamper branch (placeholder; real offset per game).
-    LOGI("anti_tamper_patch at %p", reinterpret_cast<void*>(addr));
+    // NOP a 4-byte anti-tamper branch (ARM: 0x00000000 = NOP-ish, real offset per game).
+    uint32_t nop = 0x00000000;
+    if (writeRemote(pid, addr, &nop, 4)) {
+        LOGI("anti_tamper_patch NOPed at %p", reinterpret_cast<void*>(addr));
+    } else {
+        LOGE("anti_tamper_patch write failed at %p", reinterpret_cast<void*>(addr));
+    }
 }
 
 // ---- Math ----
@@ -155,6 +204,28 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_aimbot_runner_script_NativeBridge_nativeInit(JNIEnv* env, jobject /*thiz*/) {
     srand(static_cast<unsigned>(time(nullptr)));
     LOGI("nativeInit");
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_aimbot_runner_script_NativeBridge_nativeSetOffsets(JNIEnv* env, jobject /*thiz*/,
+                                                            jlong localPlayer, jlong camera,
+                                                            jlong entityList, jint maxEnt,
+                                                            jfloat fov, jfloat smooth,
+                                                            jfloat aimFov, jlong teamOff,
+                                                            jlong healthOff, jlong posOff) {
+    offLocalPlayer = static_cast<uintptr_t>(localPlayer);
+    offCamera = static_cast<uintptr_t>(camera);
+    offEntityList = static_cast<uintptr_t>(entityList);
+    offMaxEnt = static_cast<int>(maxEnt);
+    offFov = static_cast<float>(fov);
+    offSmooth = static_cast<float>(smooth);
+    offAimFov = static_cast<float>(aimFov);
+    offTeam = static_cast<int>(teamOff);
+    offHealth = static_cast<int>(healthOff);
+    offPos = static_cast<int>(posOff);
+    LOGI("offsets set localPlayer=%p camera=%p entityList=%p maxEnt=%d",
+         reinterpret_cast<void*>(offLocalPlayer), reinterpret_cast<void*>(offCamera),
+         reinterpret_cast<void*>(offEntityList), offMaxEnt);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -223,27 +294,29 @@ Java_com_aimbot_runner_script_NativeBridge_nativeAimTick(JNIEnv* env, jobject /*
                                                          jfloat aimFov) {
     jfloatArray result = env->NewFloatArray(4);
     if (!running || targetPid == 0) {
-        env->SetFloatArrayRegion(result, 0, 4, (jfloat[]){0, 0, 0, 0});
+        jfloat zeros[4] = {0, 0, 0, 0};
+        env->SetFloatArrayRegion(result, 0, 4, zeros);
         return result;
     }
 
     applySleepJitter();
 
-    // Read local player
-    uintptr_t localPlayer = readRemote<uintptr_t>(targetPid, moduleBase + 0x16F0A00);
+    // Read local player (per-game offset from JSON)
+    uintptr_t localPlayer = readRemote<uintptr_t>(targetPid, moduleBase + offLocalPlayer);
     if (localPlayer == 0) {
-        env->SetFloatArrayRegion(result, 0, 4, (jfloat[]){0, 0, 0, 0});
+        jfloat zeros[4] = {0, 0, 0, 0};
+        env->SetFloatArrayRegion(result, 0, 4, zeros);
         return result;
     }
 
     Vec3 localPos{
-        readRemote<float>(targetPid, localPlayer + 0x138),
-        readRemote<float>(targetPid, localPlayer + 0x13C),
-        readRemote<float>(targetPid, localPlayer + 0x140)
+        readRemote<float>(targetPid, localPlayer + offPos),
+        readRemote<float>(targetPid, localPlayer + offPos + 4),
+        readRemote<float>(targetPid, localPlayer + offPos + 8)
     };
 
-    // Read camera
-    uintptr_t camera = readRemote<uintptr_t>(targetPid, moduleBase + 0x16F0B80);
+    // Read camera (per-game offset from JSON)
+    uintptr_t camera = readRemote<uintptr_t>(targetPid, moduleBase + offCamera);
     Vec3 camPos{
         readRemote<float>(targetPid, camera + 0x100),
         readRemote<float>(targetPid, camera + 0x104),
@@ -265,27 +338,27 @@ Java_com_aimbot_runner_script_NativeBridge_nativeAimTick(JNIEnv* env, jobject /*
         readRemote<float>(targetPid, camera + 0x138)
     };
 
-    // Scan entity list
-    uintptr_t entityList = readRemote<uintptr_t>(targetPid, moduleBase + 0x1720000);
-    int maxEnt = 64;
-    float bestDist = aimFov;
+    // Scan entity list (per-game offset from JSON)
+    uintptr_t entityList = readRemote<uintptr_t>(targetPid, moduleBase + offEntityList);
+    int maxEnt = offMaxEnt;
+    float bestDist = offAimFov;
     jfloat bestTarget[4] = {0, 0, 0, 0};
 
     for (int i = 0; i < maxEnt; i++) {
         uintptr_t ent = readRemote<uintptr_t>(targetPid, entityList + i * 0x10);
         if (ent == 0 || ent == localPlayer) continue;
 
-        int team = readRemote<int>(targetPid, ent + 0x2E8);
-        int localTeam = readRemote<int>(targetPid, localPlayer + 0x2E8);
+        int team = readRemote<int>(targetPid, ent + offTeam);
+        int localTeam = readRemote<int>(targetPid, localPlayer + offTeam);
         if (team == localTeam) continue;
 
-        int health = readRemote<int>(targetPid, ent + 0x2D0);
+        int health = readRemote<int>(targetPid, ent + offHealth);
         if (health <= 0) continue;
 
         Vec3 entPos{
-            readRemote<float>(targetPid, ent + 0x138),
-            readRemote<float>(targetPid, ent + 0x13C),
-            readRemote<float>(targetPid, ent + 0x140)
+            readRemote<float>(targetPid, ent + offPos),
+            readRemote<float>(targetPid, ent + offPos + 4),
+            readRemote<float>(targetPid, ent + offPos + 8)
         };
 
         Vec2 screen;
@@ -293,7 +366,7 @@ Java_com_aimbot_runner_script_NativeBridge_nativeAimTick(JNIEnv* env, jobject /*
             continue;
 
         float d = dist2D(screenW / 2.0f, screenH / 2.0f, screen.x, screen.y);
-        if (d > aimFov) continue;
+        if (d > offAimFov) continue;
         if (d < bestDist) {
             bestDist = d;
             bestTarget[0] = screen.x;

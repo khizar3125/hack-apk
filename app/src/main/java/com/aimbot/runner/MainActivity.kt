@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -51,21 +52,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnRun.setOnClickListener {
+            if (selectedScript == null || selectedGame == null) {
+                binding.tvStatus.text = "Select game and script first"
+                return@setOnClickListener
+            }
             if (executor.isActive(selectedScript!!, selectedGame!!)) {
                 executor.stop(selectedScript!!, selectedGame!!)
                 updateRunButton(false)
                 binding.tvStatus.text = "Stopped"
             } else {
-                selectedScript?.let { script ->
-                    val w = binding.root.width
-                    val h = binding.root.height
-                    if (executor.execute(selectedGame!!, script, w, h)) {
-                        updateRunButton(true)
-                        binding.tvStatus.text = "Running: ${script.name}"
-                        startStatusPoll()
-                    } else {
-                        binding.tvStatus.text = "Failed to start"
-                    }
+                val script = selectedScript!!
+                val game = selectedGame!!
+                val dm = DisplayMetrics()
+                windowManager.defaultDisplay.getMetrics(dm)
+                val w = dm.widthPixels
+                val h = dm.heightPixels
+                if (executor.execute(game, script, w, h)) {
+                    updateRunButton(true)
+                    binding.tvStatus.text = "Running: ${script.name}"
+                    startStatusPoll()
+                } else {
+                    binding.tvStatus.text = "Failed to start"
                 }
             }
         }
@@ -146,6 +153,14 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(intent)
         } else {
             startService(intent)
+        }
+        // Also start overlay service for ESP/crosshair
+        val overlayIntent = Intent(this, OverlayService::class.java)
+        overlayIntent.action = "SHOW"
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(overlayIntent)
+        } else {
+            startService(overlayIntent)
         }
     }
 

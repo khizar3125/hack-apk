@@ -1,6 +1,7 @@
 package com.aimbot.runner
 
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
@@ -45,7 +46,7 @@ class ScriptService : Service() {
     }
 
     private fun buildNotification(channel: String, text: String): android.app.Notification {
-        val mgr = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             mgr.createNotificationChannel(
                 android.app.NotificationChannel("runner_bg", "Runner BG", android.app.NotificationManager.IMPORTANCE_LOW)

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
+import org.json.JSONArray
 import org.json.JSONObject
 
 class ScriptRunner(private val context: Context) {
@@ -19,15 +20,29 @@ class ScriptRunner(private val context: Context) {
         try {
             val stream: java.io.InputStream = context.assets.open("games.json")
             val json = stream.bufferedReader().use { it.readText() }
-            val arr = org.json.JSONArray(json)
+            val arr = JSONArray(json)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val offsets = if (o.has("offsets") && !o.isNull("offsets")) o.getJSONObject("offsets") else null
+                val bypassArr = if (o.has("bypass") && !o.isNull("bypass")) o.getJSONArray("bypass") else null
+                val bypass = mutableListOf<String>()
+                if (bypassArr != null) {
+                    for (j in 0 until bypassArr.length()) bypass.add(bypassArr.getString(j))
+                }
+                val featuresArr = if (o.has("features") && !o.isNull("features")) o.getJSONArray("features") else null
+                val features = mutableListOf<String>()
+                if (featuresArr != null) {
+                    for (j in 0 until featuresArr.length()) features.add(featuresArr.getString(j))
+                }
                 list.add(GameConfig(
                     name = o.getString("name"),
                     packageName = o.getString("package"),
                     module = o.getString("module"),
-                    offsets = offsets
+                    offsets = offsets,
+                    anticheat = if (o.has("anticheat") && !o.isNull("anticheat")) o.getString("anticheat") else null,
+                    bypass = bypass,
+                    features = features,
+                    research = if (o.has("research") && !o.isNull("research")) o.getString("research") else null
                 ))
             }
         } catch (e: Exception) {
@@ -41,15 +56,21 @@ class ScriptRunner(private val context: Context) {
         try {
             val stream: java.io.InputStream = context.assets.open("scripts.json")
             val json = stream.bufferedReader().use { it.readText() }
-            val arr = org.json.JSONArray(json)
+            val arr = JSONArray(json)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val config = if (o.has("config") && !o.isNull("config")) o.getJSONObject("config") else null
+                val bypassArr = if (o.has("bypass") && !o.isNull("bypass")) o.getJSONArray("bypass") else null
+                val bypass = mutableListOf<String>()
+                if (bypassArr != null) {
+                    for (j in 0 until bypassArr.length()) bypass.add(bypassArr.getString(j))
+                }
                 list.add(ScriptConfig(
                     name = o.getString("name"),
                     type = o.getString("type"),
                     game = o.getString("game"),
-                    config = config
+                    config = config,
+                    bypass = bypass
                 ))
             }
         } catch (e: Exception) {
@@ -66,32 +87,35 @@ class ScriptRunner(private val context: Context) {
         if (running) stop()
         currentGame = game
         currentScript = script
+        NativeBridge.nativeInit()
+
+        // Pass per-game offsets from JSON to native layer before start
+        val offs = game.offsets ?: JSONObject()
+        NativeBridge.nativeSetOffsets(
+            offs.optLong("localPlayer", 0x16F0A00),
+            offs.optLong("camera", 0x16F0B80),
+            offs.optLong("entityList", 0x1720000),
+            offs.optInt("maxEnt", 64),
+            offs.optFloat("fov", 90f),
+            offs.optFloat("smooth", 1.0f),
+            offs.optFloat("aimFov", 80f),
+            offs.optLong("teamOff", 0x2E8),
+            offs.optLong("healthOff", 0x2D0),
+            offs.optLong("posOff", 0x138)
+        )
+
         running = NativeBridge.nativeStart(game.packageName, game.module, screenW, screenH)
         if (!running) return false
 
-        // Apply bypasses from script config
-        val bypasses = script.config?.getJSONArray("bypass")
-        if (bypasses != null) {
-            for (i in 0 until bypasses.length()) {
-                val b = bypasses.getString(i)
-                val type = when (b) {
-                    "signature_scramble" -> 0
-                    "handle_obfuscate" -> 1
-                    "sleep_jitter" -> 2
-                    "anti_tamper_patch" -> 3
-                    else -> -1
-                }
-                if (type >= 0) NativeBridge.nativeBypass(type)
-            }
-        }
+        for (b in script.bypasses()) runnerApplyBypass(b)
 
         aimThread = Thread { aimLoop(screenW, screenH, script) }
-        aimThread?.isDaemon = true
+        aimThread?.let { it.isDaemon = true }
         aimThread?.start()
         return true
     }
 
-    fun applyBypass(b: String) {
+    private fun runnerApplyBypass(b: String) {
         val type = when (b) {
             "signature_scramble" -> 0
             "handle_obfuscate" -> 1
@@ -100,6 +124,10 @@ class ScriptRunner(private val context: Context) {
             else -> -1
         }
         if (type >= 0) NativeBridge.nativeBypass(type)
+    }
+
+    fun applyBypass(b: String) {
+        runnerApplyBypass(b)
     }
 
     fun stop() {
@@ -120,13 +148,22 @@ class ScriptRunner(private val context: Context) {
         val aimFov = cfg.optFloat("aimFov", 80f)
 
         while (running && !Thread.currentThread().isInterrupted) {
-            val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
-            if (result.size >= 2 && result[0] != 0f && result[1] != 0f) {
-                // target locked: result[0]=x, result[1]=y
-                // smoothing applied by caller overlay if desired
+            try {
+                val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
+                if (result.size >= 2 && result[0] != 0f && result[1] != 0f) {
+                    // target locked: result[0]=x, result[1]=y; overlay notified via OverlayService
+                    com.aimbot.runner.OverlayService.instance?.setTarget(result[0], result[1], true)
+                } else {
+                    com.aimbot.runner.OverlayService.instance?.setTarget(0f, 0f, false)
+                }
+                NativeBridge.nativeBypass(2) // sleep_jitter every tick
+                Thread.sleep(16) // ~60 FPS
+            } catch (e: InterruptedException) {
+                break
+            } catch (e: Exception) {
+                Log.e("ScriptRunner", "aimLoop error", e)
+                break
             }
-            NativeBridge.nativeBypass(2) // sleep_jitter every tick
-            Thread.sleep(16) // ~60 FPS
         }
     }
 

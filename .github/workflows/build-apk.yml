@@ -23,11 +23,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Generate Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+
       - name: Show Android env
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_HOME" || true
+          ls -la "$ANDROID_HOME" || true
 
       - name: Install Android components
         run: |
@@ -39,17 +47,19 @@ jobs:
             "ndk;25.1.8937393" \
             "cmake;3.22.1"
 
+      - name: Find NDK dir
+        run: |
+          NDK_DIR="$ANDROID_HOME/ndk/25.1.8937393"
+          if [ ! -d "$NDK_DIR" ]; then
+            NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/*/ 2>/dev/null | head -1)
+          fi
+          echo "NDK_DIR=$NDK_DIR" >> $GITHUB_ENV
+
       - name: Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          echo "ndk.dir=$ANDROID_HOME/ndk/25.1.8937393" >> local.properties
+          echo "ndk.dir=$NDK_DIR" >> local.properties
           cat local.properties
-
-      - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.11.1
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace --info
@@ -67,6 +77,7 @@ jobs:
         with:
           name: build-failure-logs
           path: |
-            app/build/reports/
-            app/build/logs/
-            ~/.gradle/
+            app/build/reports/**
+            app/build/outputs/**
+            ~/.gradle/**
+          retention-days: 7

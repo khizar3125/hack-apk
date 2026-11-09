@@ -1,6 +1,7 @@
 package com.aimbot.runner.script
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
@@ -10,25 +11,38 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
 
     private val active = mutableMapOf<String, Boolean>()
 
+    private fun loadPersistedConfig(gameName: String, scriptName: String, fallback: JSONObject?): JSONObject {
+        val prefs: SharedPreferences = context.getSharedPreferences("runner_config", Context.MODE_PRIVATE)
+        val saved = prefs.getString("script_config_${gameName}_${scriptName}", null)
+        return if (saved != null) JSONObject(saved) else (fallback ?: JSONObject())
+    }
+
     fun execute(game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int): Boolean {
         val key = "${game.name}|${script.name}"
         if (active[key] == true) return false
 
-        // Apply game-specific bypasses first
-        val gameBypasses = game.bypasses()
-        for (b in gameBypasses) runner.applyBypass(b)
+        // Clear any previously active script (single native engine, one at a time)
+        active.clear()
 
-        // Apply script-specific bypasses
-        val scriptBypasses = script.bypasses()
-        for (b in scriptBypasses) runner.applyBypass(b)
+        // Load persisted config (from GameScreenActivity changes) and merge into script
+        val cfg = loadPersistedConfig(game.name, script.name, script.config)
+        val updatedScript = script.copy(config = cfg)
+
+        // Initialize native engine first (sets targetPid, moduleBase, running flag, applies script bypasses)
+        if (!runner.start(game, updatedScript, screenW, screenH)) {
+            active[key] = false
+            Log.e("ScriptExecutor", "nativeStart failed for ${game.name}")
+            return false
+        }
+
+        // Apply game-specific bypasses after engine is live
+        for (b in game.bypasses()) runner.applyBypass(b)
 
         active[key] = true
 
-        val type = script.type.lowercase()
-        val cfg = script.config ?: JSONObject()
+        val type = updatedScript.type.lowercase()
 
         when (type) {
-            "aimbot" -> startAimbot(key, game, cfg, screenW, screenH)
             "esp" -> startEsp(key, game, cfg, screenW, screenH)
             "godmode" -> startGodmode(key, cfg)
             "fly" -> startFly(key, cfg)
@@ -44,6 +58,10 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             "autoplay" -> startAutoPlay(key, cfg)
             "impostor_highlight" -> startImpostorHighlight(key, cfg)
             "kill_range" -> startKillRange(key, cfg)
+            "aimbot" -> {
+                // aimbot loop already running inside runner.start(); no extra thread needed
+                Log.i("ScriptExecutor", "aimbot loop active via runner.start for ${game.name}")
+            }
             else -> Log.w("ScriptExecutor", "unknown script type: $type")
         }
 
@@ -73,13 +91,15 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             val bone = cfg.optString("bone", "head")
 
             while (active[key] == true && !Thread.interrupted()) {
-                val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
-                if (result.size >= 2 && result[0] != 0f && result[1] != 0f) {
-                    // target locked at result[0], result[1]; overlay draws snapline
-                    if (autoFire) NativeBridge.nativeBypass(2) // sleep_jitter before fire
-                }
-                NativeBridge.nativeBypass(2) // sleep_jitter every tick
-                Thread.sleep(16) // ~60 FPS
+                try {
+                    val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
+                    if (result.size >= 2 && result[0] != 0f && result[1] != 0f) {
+                        // target locked at result[0], result[1]; overlay draws snapline
+                        if (autoFire) NativeBridge.nativeBypass(2) // sleep_jitter before fire
+                    }
+                    NativeBridge.nativeBypass(2) // sleep_jitter every tick
+                    Thread.sleep(16)
+                } catch (e: InterruptedException) { break } catch (e: Exception) { Log.e("ScriptExecutor", "aimbot loop error", e); break }
             }
         }
         thread.isDaemon = true
@@ -96,8 +116,10 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             val snapline = cfg.optBoolean("snapline", true)
 
             while (active[key] == true && !Thread.interrupted()) {
-                NativeBridge.nativeBypass(2) // sleep_jitter to avoid detection
-                Thread.sleep(16)
+                try {
+                    NativeBridge.nativeBypass(2) // sleep_jitter to avoid detection
+                    Thread.sleep(16)
+                } catch (e: InterruptedException) { break } catch (e: Exception) { Log.e("ScriptExecutor", "esp loop error", e); break }
             }
         }
         thread.isDaemon = true
