@@ -1,0 +1,9 @@
+{
+  "name": "hack apk",
+  "templateId": "empty",
+  "agent": {
+    "profile": "heavy",
+    "planApproval": true,
+    "askUser": true
+  }
+}

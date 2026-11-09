@@ -1,0 +1,450 @@
+[
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Roblox",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": false,
+      "teamCheck": false
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Blox Fruits",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": false,
+      "teamCheck": false
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Blox Fruits",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": true,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "PUBG Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 2.0,
+      "aimFov": 100,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": true,
+      "teamCheck": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "PUBG Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": true,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true,
+      "weapon": true
+    }
+  },
+  {
+    "name": "No Recoil",
+    "type": "misc",
+    "game": "PUBG Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "recoilScale": 0.0,
+      "swayScale": 0.0
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Free Fire",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.5,
+      "aimFov": 90,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": true,
+      "teamCheck": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Free Fire",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": false,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Call of Duty Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 2.0,
+      "aimFov": 100,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": true,
+      "teamCheck": true,
+      "silentAim": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Call of Duty Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": true,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true,
+      "weapon": true
+    }
+  },
+  {
+    "name": "No Recoil",
+    "type": "misc",
+    "game": "Call of Duty Mobile",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "recoilScale": 0.0,
+      "rapidFire": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Genshin Impact",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": false,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": false
+    }
+  },
+  {
+    "name": "Godmode",
+    "type": "misc",
+    "game": "Genshin Impact",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "config": {
+      "enabled": true,
+      "godmode": true,
+      "fly": true,
+      "speed": 2.0
+    }
+  },
+  {
+    "name": "Always Impostor",
+    "type": "misc",
+    "game": "Among Us",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "alwaysImpostor": true,
+      "killRange": 5.0,
+      "killCooldown": 0.0,
+      "vision": 2.0,
+      "speed": 1.5
+    }
+  },
+  {
+    "name": "ESP Radar",
+    "type": "esp",
+    "game": "Among Us",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": false,
+      "distance": true,
+      "name": true,
+      "health": false,
+      "snapline": true,
+      "impostorHighlight": true
+    }
+  },
+  {
+    "name": "Fly",
+    "type": "misc",
+    "game": "Minecraft PE",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fly": true,
+      "speed": 1.0
+    }
+  },
+  {
+    "name": "X-Ray",
+    "type": "misc",
+    "game": "Minecraft PE",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "xray": true,
+      "fullbright": true,
+      "oreHighlight": true
+    }
+  },
+  {
+    "name": "Speed",
+    "type": "misc",
+    "game": "Minecraft PE",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "speed": 2.0,
+      "healthHack": true,
+      "godmode": false
+    }
+  },
+  {
+    "name": "Coin Magnet",
+    "type": "misc",
+    "game": "Subway Surfers",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "coinMagnet": true,
+      "superSneakers": true,
+      "godmode": true,
+      "multiplier2x": true
+    }
+  },
+  {
+    "name": "Godmode",
+    "type": "misc",
+    "game": "Subway Surfers",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "godmode": true,
+      "allBoards": true,
+      "allCharacters": true
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Gangster Mirage City",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": false,
+      "teamCheck": false
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Gangster Mirage City",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": true,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true
+    }
+  },
+  {
+    "name": "Godmode",
+    "type": "misc",
+    "game": "Gangster Mirage City",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "godmode": true,
+      "fly": true,
+      "speed": 2.0,
+      "oneHit": true
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Mobile Legends",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.5,
+      "aimFov": 90,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": true,
+      "teamCheck": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Mobile Legends",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": false,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true
+    }
+  },
+  {
+    "name": "Aimbot",
+    "type": "aimbot",
+    "game": "Brawl Stars",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "autoFire": true,
+      "bone": "head",
+      "visibleOnly": true,
+      "teamCheck": true
+    }
+  },
+  {
+    "name": "ESP",
+    "type": "esp",
+    "game": "Brawl Stars",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "box": true,
+      "skeleton": false,
+      "distance": true,
+      "name": true,
+      "health": true,
+      "snapline": true
+    }
+  },
+  {
+    "name": "Auto Play",
+    "type": "misc",
+    "game": "Candy Crush",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "autoPlay": true,
+      "infiniteLives": true,
+      "levelUnlock": true
+    }
+  },
+  {
+    "name": "Auto Play",
+    "type": "misc",
+    "game": "FIFA Mobile",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "autoPlay": true,
+      "playerSpoof": true,
+      "coinSpoof": true
+    }
+  },
+  {
+    "name": "Speed",
+    "type": "misc",
+    "game": "Asphalt 9",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "speed": 2.0,
+      "infiniteNitro": true,
+      "godmode": true
+    }
+  },
+  {
+    "name": "Speed",
+    "type": "misc",
+    "game": "Temple Run 2",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "speed": 2.0,
+      "coinMagnet": true,
+      "godmode": true,
+      "allCharacters": true
+    }
+  },
+  {
+    "name": "Auto Play",
+    "type": "misc",
+    "game": "Clash of Clans",
+    "bypass": ["sleep_jitter"],
+    "config": {
+      "enabled": true,
+      "autoPlay": true,
+      "trainTroops": true
+    }
+  }
+]

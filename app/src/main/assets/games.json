@@ -1,0 +1,359 @@
+[
+  {
+    "name": "Roblox",
+    "package": "com.roblox.client",
+    "module": "libil2cpp.so",
+    "category": "shooter",
+    "anticheat": "none_client_side",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 64,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_skeleton", "esp_distance", "esp_name", "fly", "speed", "norecoil", "autofire"],
+    "research": "Roblox uses Luau bytecode. Executors hook scheduler/global state. External silent aim + hitbox expander common. Offset dumper prints F9 console. Aimbot features: auto aim, skill-shot lock, FOV control, smoothing, keybind toggle."
+  },
+  {
+    "name": "Blox Fruits",
+    "package": "com.roblox.client",
+    "module": "libil2cpp.so",
+    "category": "shooter",
+    "anticheat": "none_client_side",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 64,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_skeleton", "esp_distance", "esp_name", "fly", "speed", "autofire", "fruit_finder"],
+    "research": "Blox Fruits aimbot locks nearest target, lands skill-shots/ranged fruit moves/gun shots. FOV control limits off-centre targets. Smoothing makes lock less obvious in PvP. Keybind toggle. Works with Auto Bounty and Fruit Finder."
+  },
+  {
+    "name": "PUBG Mobile",
+    "package": "com.tencent.ig",
+    "module": "libUE4.so",
+    "category": "br",
+    "anticheat": "kernel_weekly_ban",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 100,
+      "fov": 90,
+      "smooth": 2.0,
+      "aimFov": 100,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_skeleton", "esp_distance", "esp_name", "norecoil", "nosway", "speed", "jump"],
+    "research": "PUBG Mobile runs Anti-ESP and weekly ban waves (2.8M+ accounts). ESP gathers player positions, hard to detect server-side. Direct process R/W without frida/hooking reported undetected. Bone array + view matrix needed for ESP. Team numbers, life state, origin, dormancy critical."
+  },
+  {
+    "name": "Free Fire",
+    "package": "com.dts.freefireth",
+    "module": "libil2cpp.so",
+    "category": "br",
+    "anticheat": "server_side_ban",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 50,
+      "fov": 90,
+      "smooth": 1.5,
+      "aimFov": 90,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_distance", "esp_name", "norecoil", "speed", "fly"],
+    "research": "Free Fire uses server-side ban detection. Cheat offsets/bypass codes circulate for player status, input, UI. Anti-cheat hooks open process; handle hijack bypasses user-mode checks. Kernel anti-cheat needs driver-level bypass."
+  },
+  {
+    "name": "Call of Duty Mobile",
+    "package": "com.activision.callofduty.shooter",
+    "module": "libUE4.so",
+    "category": "shooter",
+    "anticheat": "ricochet_kernel",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 64,
+      "fov": 90,
+      "smooth": 2.0,
+      "aimFov": 100,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_skeleton", "esp_distance", "esp_name", "norecoil", "rapidfire", "silent_aim"],
+    "research": "COD Mobile uses Ricochet anti-cheat (kernel). Emulator bypasses (Raven, Gameloop) exist. Aimbot + ESP + walls mod menus common. Anti-ban protection advertised. Silent aim, rapid fire features."
+  },
+  {
+    "name": "Genshin Impact",
+    "package": "com.miHoYo.GenshinImpact",
+    "module": "libunity.so",
+    "category": "rpg",
+    "anticheat": "hoyoprotect_kernel",
+    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 32,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["esp_box", "esp_distance", "esp_name", "fly", "speed", "godmode"],
+    "research": "Genshin Impact uses HoYoProtect kernel anti-cheat (mhyprot2.sys). Bypass allows DLL injection, internal/external memory R/W. Handle table removal bypasses handle checks. Kernel driver abuse gives ring-0 read/write any process memory."
+  },
+  {
+    "name": "Among Us",
+    "package": "com.innersloth.spacemafia",
+    "module": "libil2cpp.so",
+    "category": "social",
+    "anticheat": "none",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 10,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["always_impostor", "esp_radar", "speed", "teleport", "sabotage_control", "kill_range", "no_cooldown", "unlock_all_skins"],
+    "research": "Among Us mod menus (BepInEx/Unity): Always Impostor, ESP & Radar, unlock all skins/pets/hats, speed hack, wallhack, teleport, sabotage control, host controls, kill distance, vision, replay system. Android mod loader runs Play Store copy."
+  },
+  {
+    "name": "Minecraft PE",
+    "package": "com.mojang.minecraftpe",
+    "module": "libminecraftpe.so",
+    "category": "sandbox",
+    "anticheat": "none",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 64,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["fly", "xray", "speed", "health_hack", "godmode", "nuker", "fullbright"],
+    "research": "Minecraft PE (Bedrock) cheats: fly hack, x-ray vision, unlimited resources, speed hack, health hack, fullbright. Toolbox mod menu pattern. X-ray addons highlight ores/caves/dungeons. Fly in survival, high jump, one hit."
+  },
+  {
+    "name": "Clash of Clans",
+    "package": "com.supercell.clashofclans",
+    "module": "libunity.so",
+    "category": "strategy",
+    "anticheat": "server_side",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 1,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["auto_play", "resource_spoof", "train_troops"],
+    "research": "Clash of Clans is server-side authoritative. Client-side mods limited to UI automation, auto-play scripts, troop training queues. Resource spoofing detected server-side."
+  },
+  {
+    "name": "Subway Surfers",
+    "package": "com.kiloo.subwaysurf",
+    "module": "libunity.so",
+    "category": "runner",
+    "anticheat": "none",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 1,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["speed", "coin_magnet", "godmode", "super_sneakers", "2x_multiplier", "all_boards"],
+    "research": "Subway Surfers stores progress in Unity PlayerPrefs (encrypted on Android). Modded client grants unlocked state at launch. Features: unlimited coins/keys, coin magnet, super sneakers, 2x multiplier, all characters/boards, god mode, no crash."
+  },
+  {
+    "name": "Temple Run 2",
+    "package": "com.imangi.templerun2",
+    "module": "libunity.so",
+    "category": "runner",
+    "anticheat": "none",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 1,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["speed", "coin_magnet", "godmode", "all_characters", "all_powerups"],
+    "research": "Temple Run 2 cheats: unlimited coins, gems, all characters, all powerups, god mode, speed hack, infinite distance."
+  },
+  {
+    "name": "Asphalt 9",
+    "package": "com.gameloft.android.ANMP.GloftA9HM",
+    "module": "libunity.so",
+    "category": "racing",
+    "anticheat": "server_side",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 8,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["speed", "nitro_infinite", "all_cars", "godmode"],
+    "research": "Asphalt 9: speed hack, infinite nitro, unlock all cars, god mode. Server-side validation limits economy edits."
+  },
+  {
+    "name": "Mobile Legends",
+    "package": "com.mobile.legends",
+    "module": "libUE4.so",
+    "category": "moba",
+    "anticheat": "server_side",
+    "bypass": ["signature_scramble", "sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 10,
+      "fov": 90,
+      "smooth": 1.5,
+      "aimFov": 90,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_distance", "esp_name", "norecoil", "fly"],
+    "research": "Mobile Legends: aimbot, ESP box/distance/name, no recoil, fly. Server-side anti-cheat detects abnormal stats."
+  },
+  {
+    "name": "Brawl Stars",
+    "package": "com.supercell.brawlstars",
+    "module": "libunity.so",
+    "category": "shooter",
+    "anticheat": "server_side",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 10,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_distance", "norecoil", "auto_aim"],
+    "research": "Brawl Stars: aimbot, ESP, no recoil, auto aim. Server-side validation."
+  },
+  {
+    "name": "Candy Crush",
+    "package": "com.king.candycrushsaga",
+    "module": "libunity.so",
+    "category": "puzzle",
+    "anticheat": "server_side",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 1,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["auto_play", "infinite_lives", "level_unlock"],
+    "research": "Candy Crush: auto-play solver, infinite lives, level unlock. Server-side economy limits."
+  },
+  {
+    "name": "FIFA Mobile",
+    "package": "com.ea.gp.fifamobile",
+    "module": "libunity.so",
+    "category": "sports",
+    "anticheat": "server_side",
+    "bypass": ["sleep_jitter"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 22,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["auto_play", "player_spoof", "coin_spoof"],
+    "research": "FIFA Mobile: auto-play, player stat spoof, coin spoof. Server-side economy validation."
+  },
+  {
+    "name": "Gangster Mirage City",
+    "package": "com.levelinfinite.gst",
+    "module": "libil2cpp.so",
+    "category": "openworld",
+    "anticheat": "server_economy + client_aim",
+    "bypass": ["sleep_jitter", "signature_scramble", "handle_obfuscate"],
+    "offsets": {
+      "localPlayer": 0x16F0A00,
+      "camera": 0x16F0B80,
+      "entityList": 0x1720000,
+      "maxEnt": 64,
+      "fov": 90,
+      "smooth": 1.0,
+      "aimFov": 80,
+      "screenW": 1080,
+      "screenH": 1920
+    },
+    "features": ["aimbot", "esp_box", "esp_distance", "esp_name", "godmode", "fly", "speed", "norecoil", "one_hit", "unlimited_money", "all_guns", "vehicle_speed", "no_ads"],
+    "research": "Gangster Mirage City: Level Infinite/Gameloft GTA-style open-world online RPG (package com.levelinfinite.gst). Package name com.levelinfinite.gst, module libil2cpp.so. Features: heists, open world, vehicles, weapons, PvP, co-op, business/empire, street racing, weapon/vehicle customization. Mod scene: unlimited money, all guns unlocked, no ads. Anti-cheat: server-side economy validation (money/items), client-side aim/ESP detection. Bypass: signature_scramble + handle_obfuscate for client, sleep_jitter for timing. Offsets are placeholders — dump libil2cpp.so per version to fill real values."
+  }
+]

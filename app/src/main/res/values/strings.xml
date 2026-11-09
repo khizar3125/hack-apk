@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Runner</string>
+    <string name="select_game">Game chunein</string>
+    <string name="select_script">Script chunein</string>
+    <string name="btn_run">Run</string>
+    <string name="btn_stop">Stop</string>
+    <string name="btn_refresh">Refresh</string>
+    <string name="btn_floating">Floating Icon</string>
+    <string name="no_game">Koi game select nahi</string>
+    <string name="no_script">Koi script select nahi</string>
+    <string name="status_stopped">Band hai</string>
+    <string name="status_running">Chal raha hai</string>
+    <string name="status_detected">Game dhoondha ja raha hai</string>
+    <string name="aimbot">Aimbot</string>
+    <string name="esp">ESP</string>
+    <string name="blox_fruits">Blox Fruits</string>
+    <string name="roblox">Roblox</string>
+    <string name="background_note">Script background mein chalegi. Stop dabakar band karein.</string>
+    <string name="perm_overlay">Overlay ijazaat dein (ESP / aim lines ke liye)</string>
+    <string name="perm_accessibility">Accessibility ijazaat dein (input injection ke liye)</string>
+</resources>
