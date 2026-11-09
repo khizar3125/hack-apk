@@ -22,12 +22,6 @@ class OverlayService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
     }
 
-    override fun onDestroy() {
-        instance = null
-        hideOverlay()
-        super.onDestroy()
-    }
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             "SHOW" -> showOverlay()
@@ -39,6 +33,7 @@ class OverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        instance = null
         hideOverlay()
         super.onDestroy()
     }

@@ -82,12 +82,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestPermissions() {
         val perms = arrayOf(
-            Manifest.permission.SYSTEM_ALERT_WINDOW,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.WAKE_LOCK,
             Manifest.permission.FOREGROUND_SERVICE
         )
         ActivityCompat.requestPermissions(this, perms, 1001)
+
+        // SYSTEM_ALERT_WINDOW cannot be requested via ActivityCompat.
+        // Check and open overlay settings if not granted.
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            val intent = android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION
+                .let { android.net.Uri.parse("package:${packageName}") }
+                .let { android.content.Intent(it, it) }
+            startActivity(intent)
+        }
     }
 
     private fun bindGameList() {

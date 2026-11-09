@@ -3,6 +3,7 @@ package com.aimbot.runner.script
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.aimbot.runner.OverlayService
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
 import org.json.JSONObject
@@ -114,13 +115,25 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             val name = cfg.optBoolean("name", true)
             val health = cfg.optBoolean("health", true)
             val snapline = cfg.optBoolean("snapline", true)
+            val fov = cfg.optFloat("fov", 90f)
+            val smooth = cfg.optFloat("smooth", 1.0f)
+            val aimFov = cfg.optFloat("aimFov", 80f)
 
             while (active[key] == true && !Thread.interrupted()) {
                 try {
+                    val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
+                    if (result.size >= 2) {
+                        val x = result[0]
+                        val y = result[1]
+                        val locked = x != 0f && y != 0f
+                        OverlayService.instance?.setTarget(x, y, locked)
+                    }
                     NativeBridge.nativeBypass(2) // sleep_jitter to avoid detection
                     Thread.sleep(16)
                 } catch (e: InterruptedException) { break } catch (e: Exception) { Log.e("ScriptExecutor", "esp loop error", e); break }
             }
+            // Clear target when ESP stops
+            OverlayService.instance?.setTarget(0f, 0f, false)
         }
         thread.isDaemon = true
         thread.start()
