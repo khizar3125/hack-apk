@@ -1,49 +1,54 @@
 package com.aimbot.runner.script
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
+import com.aimbot.runner.root.MemoryEngine
+import com.aimbot.runner.root.RootAccess
 import org.json.JSONArray
 import org.json.JSONObject
 
+/**
+ * Owns the memory engine. One game + one script at a time.
+ */
 class ScriptRunner(private val context: Context) {
+
+    /** Shared engine so the executor and the runner read the same pid. */
+    val engine = MemoryEngine()
 
     private var currentGame: GameConfig? = null
     private var currentScript: ScriptConfig? = null
     private var running = false
-    private var aimThread: Thread? = null
+
+    /** Reason the last start() failed, surfaced to the UI. */
+    @Volatile
+    var lastError: String = ""
+        private set
 
     fun loadGames(): List<GameConfig> {
         val list = mutableListOf<GameConfig>()
         try {
-            val stream: java.io.InputStream = context.assets.open("games.json")
-            val json = stream.bufferedReader().use { it.readText() }
+            val json = context.assets.open("games.json").bufferedReader().use { it.readText() }
             val arr = JSONArray(json)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val offsets = if (o.has("offsets") && !o.isNull("offsets")) o.getJSONObject("offsets") else null
-                val bypassArr = if (o.has("bypass") && !o.isNull("bypass")) o.getJSONArray("bypass") else null
-                val bypass = mutableListOf<String>()
-                if (bypassArr != null) {
-                    for (j in 0 until bypassArr.length()) bypass.add(bypassArr.getString(j))
-                }
-                val featuresArr = if (o.has("features") && !o.isNull("features")) o.getJSONArray("features") else null
-                val features = mutableListOf<String>()
-                if (featuresArr != null) {
-                    for (j in 0 until featuresArr.length()) features.add(featuresArr.getString(j))
-                }
-                list.add(GameConfig(
-                    name = o.getString("name"),
-                    packageName = o.getString("package"),
-                    module = o.getString("module"),
-                    offsets = offsets,
-                    anticheat = if (o.has("anticheat") && !o.isNull("anticheat")) o.getString("anticheat") else null,
-                    bypass = bypass,
-                    features = features,
-                    research = if (o.has("research") && !o.isNull("research")) o.getString("research") else null
-                ))
+                val bypass = stringList(o, "bypass")
+                val features = stringList(o, "features")
+                list.add(
+                    GameConfig(
+                        name = o.getString("name"),
+                        packageName = o.getString("package"),
+                        module = o.getString("module"),
+                        offsets = offsets,
+                        anticheat = if (o.has("anticheat") && !o.isNull("anticheat")) o.getString("anticheat") else null,
+                        category = if (o.has("category") && !o.isNull("category")) o.getString("category") else null,
+                        bypass = bypass,
+                        features = features,
+                        research = if (o.has("research") && !o.isNull("research")) o.getString("research") else null
+                    )
+                )
             }
         } catch (e: Exception) {
             Log.e("ScriptRunner", "loadGames failed", e)
@@ -54,24 +59,20 @@ class ScriptRunner(private val context: Context) {
     fun loadScripts(): List<ScriptConfig> {
         val list = mutableListOf<ScriptConfig>()
         try {
-            val stream: java.io.InputStream = context.assets.open("scripts.json")
-            val json = stream.bufferedReader().use { it.readText() }
+            val json = context.assets.open("scripts.json").bufferedReader().use { it.readText() }
             val arr = JSONArray(json)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val config = if (o.has("config") && !o.isNull("config")) o.getJSONObject("config") else null
-                val bypassArr = if (o.has("bypass") && !o.isNull("bypass")) o.getJSONArray("bypass") else null
-                val bypass = mutableListOf<String>()
-                if (bypassArr != null) {
-                    for (j in 0 until bypassArr.length()) bypass.add(bypassArr.getString(j))
-                }
-                list.add(ScriptConfig(
-                    name = o.getString("name"),
-                    type = o.getString("type"),
-                    game = o.getString("game"),
-                    config = config,
-                    bypass = bypass
-                ))
+                list.add(
+                    ScriptConfig(
+                        name = o.getString("name"),
+                        type = o.getString("type"),
+                        game = o.getString("game"),
+                        config = config,
+                        bypass = stringList(o, "bypass")
+                    )
+                )
             }
         } catch (e: Exception) {
             Log.e("ScriptRunner", "loadScripts failed", e)
@@ -79,51 +80,78 @@ class ScriptRunner(private val context: Context) {
         return list
     }
 
+    private fun stringList(o: JSONObject, key: String): List<String> {
+        if (!o.has(key) || o.isNull(key)) return emptyList()
+        val arr = o.getJSONArray(key)
+        val out = mutableListOf<String>()
+        for (j in 0 until arr.length()) out.add(arr.getString(j))
+        return out
+    }
+
     fun scriptsForGame(gameName: String): List<ScriptConfig> {
         return loadScripts().filter { it.game == gameName }
     }
 
+    /**
+     * Attaches to the game and resolves its module.
+     *
+     * The target game process must already be running and the device must be
+     * rooted: reading another app's memory is not possible from a normal
+     * unprivileged app.
+     */
     fun start(game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int): Boolean {
         if (running) stop()
         currentGame = game
         currentScript = script
-        NativeBridge.nativeInit()
 
-        // Pass per-game offsets from JSON to native layer before start
+        if (!RootAccess.probe()) {
+            lastError = "Root access is required to read game memory. " +
+                "Grant root to the app, then try again."
+            Log.e("ScriptRunner", lastError)
+            return false
+        }
+
+        if (!engine.attach(game.packageName)) {
+            lastError = "${game.name} is not running. Start the game first, " +
+                "then run the script."
+            Log.e("ScriptRunner", lastError)
+            return false
+        }
+
+        if (!engine.resolveModule(game.module)) {
+            lastError = "${game.module} is not loaded in ${game.name}. " +
+                "The game has to reach its main scene before scripts attach."
+            Log.e("ScriptRunner", lastError)
+            engine.detach()
+            return false
+        }
+
         val offs = game.offsets ?: JSONObject()
-        NativeBridge.nativeSetOffsets(
-            offs.optLong("localPlayer", 0x16F0A00),
-            offs.optLong("camera", 0x16F0B80),
-            offs.optLong("entityList", 0x1720000),
-            offs.optInt("maxEnt", 64),
-            offs.optDouble("fov", 90.0).toFloat(),
-            offs.optDouble("smooth", 1.0).toFloat(),
-            offs.optDouble("aimFov", 80.0).toFloat(),
-            offs.optLong("teamOff", 0x2E8),
-            offs.optLong("healthOff", 0x2D0),
-            offs.optLong("posOff", 0x138)
-        )
+        engine.offLocalPlayer = offs.optLong("localPlayer", 0x16F0A00)
+        engine.offCamera = offs.optLong("camera", 0x16F0B80)
+        engine.offEntityList = offs.optLong("entityList", 0x1720000)
+        engine.offMaxEnt = offs.optInt("maxEnt", 64)
+        engine.offTeam = offs.optInt("teamOff", 0x2E8)
+        engine.offHealth = offs.optInt("healthOff", 0x2D0)
+        engine.offPos = offs.optInt("posOff", 0x138)
+        engine.camPosOff = offs.optInt("camPosOff", 0x100)
+        engine.camForwardOff = offs.optInt("camForwardOff", 0x110)
+        engine.camUpOff = offs.optInt("camUpOff", 0x120)
+        engine.camRightOff = offs.optInt("camRightOff", 0x130)
 
-        running = NativeBridge.nativeStart(game.packageName, game.module, screenW, screenH)
-        if (!running) return false
-
-        for (b in script.bypasses()) runnerApplyBypass(b)
-
-        aimThread = Thread { aimLoop(screenW, screenH, script) }
-        aimThread?.let { it.isDaemon = true }
-        aimThread?.start()
+        running = true
+        Log.i("ScriptRunner", "engine live for ${game.name} pid=${engine.pid}")
         return true
     }
 
     private fun runnerApplyBypass(b: String) {
-        val type = when (b) {
-            "signature_scramble" -> 0
-            "handle_obfuscate" -> 1
-            "sleep_jitter" -> 2
-            "anti_tamper_patch" -> 3
-            else -> -1
+        when (b) {
+            "signature_scramble" -> engine.applySignatureScramble()
+            "handle_obfuscate" -> engine.applyHandleObfuscate()
+            "sleep_jitter" -> engine.applySleepJitter()
+            "anti_tamper_patch" -> engine.applyAntiTamperPatch()
+            else -> Log.w("ScriptRunner", "unknown bypass '$b'")
         }
-        if (type >= 0) NativeBridge.nativeBypass(type)
     }
 
     fun applyBypass(b: String) {
@@ -132,40 +160,17 @@ class ScriptRunner(private val context: Context) {
 
     fun stop() {
         running = false
-        NativeBridge.nativeStop()
-        aimThread?.interrupt()
-        aimThread = null
+        engine.detach()
         currentGame = null
         currentScript = null
     }
 
-    fun isRunning(): Boolean = running && NativeBridge.nativeIsRunning()
+    fun isRunning(): Boolean = running && engine.pid != 0
 
-    private fun aimLoop(screenW: Int, screenH: Int, script: ScriptConfig) {
-        val cfg = script.config ?: JSONObject()
-        val fov = cfg.optDouble("fov", 90.0).toFloat()
-        val smooth = cfg.optDouble("smooth", 1.0).toFloat()
-        val aimFov = cfg.optDouble("aimFov", 80.0).toFloat()
-
-        while (running && !Thread.currentThread().isInterrupted) {
-            try {
-                val result = NativeBridge.nativeAimTick(screenW, screenH, fov, smooth, aimFov)
-                if (result.size >= 2 && result[0] != 0f && result[1] != 0f) {
-                    // target locked: result[0]=x, result[1]=y; overlay notified via OverlayService
-                    com.aimbot.runner.OverlayService.instance?.setTarget(result[0], result[1], true)
-                } else {
-                    com.aimbot.runner.OverlayService.instance?.setTarget(0f, 0f, false)
-                }
-                NativeBridge.nativeBypass(2) // sleep_jitter every tick
-                Thread.sleep(16) // ~60 FPS
-            } catch (e: InterruptedException) {
-                break
-            } catch (e: Exception) {
-                Log.e("ScriptRunner", "aimLoop error", e)
-                break
-            }
-        }
+    fun status(): String {
+        if (!running) return "stopped"
+        return "pid=${engine.pid} base=0x${engine.moduleBase.toString(16)}"
     }
 
-    fun status(): String = NativeBridge.nativeStatus()
+    fun activeGame(): GameConfig? = currentGame
 }

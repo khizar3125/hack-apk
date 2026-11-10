@@ -3,10 +3,30 @@ package com.aimbot.runner
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.CheckBox
+import android.widget.LinearLayout
+import android.widget.SeekBar
+import android.widget.Spinner
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.aimbot.runner.databinding.ActivityGameScreenBinding
 import org.json.JSONObject
+
+/**
+ * Reads a feature flag that may be stored as a boolean or as a number.
+ * scripts.json uses both: "godmode": true but "speed": 2.0.
+ */
+private fun JSONObject.flagOn(key: String): Boolean {
+    if (!has(key) || isNull(key)) return false
+    return when (val v = get(key)) {
+        is Boolean -> v
+        is Number -> v.toDouble() > 0.0
+        is String -> v.equals("true", ignoreCase = true)
+        else -> false
+    }
+}
 
 class GameScreenActivity : AppCompatActivity() {
 
@@ -15,6 +35,10 @@ class GameScreenActivity : AppCompatActivity() {
     private var scriptName = ""
     private var scriptType = ""
     private var config = JSONObject()
+
+    // Seekbar bounds are tracked per key so saveFeatures() can reverse the
+    // progress back to a real value instead of assuming min=0.
+    private val seekBounds = mutableMapOf<String, Pair<Float, Float>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +49,11 @@ class GameScreenActivity : AppCompatActivity() {
         scriptName = intent.getStringExtra("script_name") ?: ""
         scriptType = intent.getStringExtra("script_type") ?: ""
         val configStr = intent.getStringExtra("script_config") ?: "{}"
-        config = JSONObject(configStr)
+        config = try {
+            JSONObject(configStr)
+        } catch (_: Exception) {
+            JSONObject()
+        }
 
         binding.tvGameName.text = "Game: $gameName"
         binding.tvScriptName.text = "Script: $scriptName ($scriptType)"
@@ -34,6 +62,7 @@ class GameScreenActivity : AppCompatActivity() {
 
         binding.btnApply.setOnClickListener {
             saveFeatures()
+            Toast.makeText(this, "Applied", Toast.LENGTH_SHORT).show()
             finish()
         }
 
@@ -42,16 +71,17 @@ class GameScreenActivity : AppCompatActivity() {
 
     private fun buildFeatureToggles() {
         binding.container.removeAllViews()
+        seekBounds.clear()
 
-        when (scriptType) {
+        when (scriptType.lowercase()) {
             "aimbot" -> {
-                addToggle("Aimbot enabled", "aimbot", config.optBoolean("aimbot", true))
+                addToggle("Aimbot enabled", "aimbot", config.optBoolean("aimbot", config.optBoolean("enabled", true)))
                 addToggle("Auto fire", "autoFire", config.optBoolean("autoFire", false))
-                addToggle("Visibility check", "visibilityCheck", config.optBoolean("visibilityCheck", true))
-                addSeekBar("FOV", "fov", config.optInt("fov", 90).toFloat(), 30f, 120f)
+                addToggle("Team check", "teamCheck", config.optBoolean("teamCheck", false))
+                addSeekBar("FOV", "fov", config.optDouble("fov", 90.0).toFloat(), 30f, 120f)
                 addSeekBar("Smooth", "smooth", config.optDouble("smooth", 1.0).toFloat(), 0.5f, 3.0f)
-                addSeekBar("Aim FOV", "aimFov", config.optInt("aimFov", 80).toFloat(), 30f, 120f)
-                addSpinner("Bone", "bone", arrayOf("Head", "Neck", "Chest"), 0)
+                addSeekBar("Aim FOV", "aimFov", config.optDouble("aimFov", 80.0).toFloat(), 30f, 120f)
+                addSpinner("Bone", "bone", arrayOf("head", "neck", "chest"), 0)
             }
             "esp" -> {
                 addToggle("Box", "box", config.optBoolean("box", true))
@@ -60,105 +90,127 @@ class GameScreenActivity : AppCompatActivity() {
                 addToggle("Health", "health", config.optBoolean("health", true))
                 addToggle("Name", "name", config.optBoolean("name", true))
                 addToggle("Snapline", "snapline", config.optBoolean("snapline", true))
-                if (config.has("imposterHighlight")) {
-                    addToggle("Imposter highlight", "imposterHighlight", config.optBoolean("imposterHighlight", false))
-                }
-                if (config.has("xray")) {
-                    addToggle("X-ray", "xray", config.optBoolean("xray", false))
-                }
             }
             "misc" -> {
-                if (config.has("fly")) addToggle("Fly", "fly", config.optBoolean("fly", false))
-                if (config.has("speed")) addToggle("Speed", "speed", config.optBoolean("speed", false))
-                if (config.has("godmode")) addToggle("God mode", "godmode", config.optBoolean("godmode", false))
-                if (config.has("nocrecoil")) addToggle("No recoil", "nocrecoil", config.optBoolean("nocrecoil", true))
-                if (config.has("killrange")) addToggle("Kill range", "killrange", config.optBoolean("killrange", false))
-                if (config.has("coinmagnet")) addToggle("Coin magnet", "coinmagnet", config.optBoolean("coinmagnet", false))
-                if (config.has("autoplay")) addToggle("Auto play", "autoplay", config.optBoolean("autoplay", false))
-                if (config.has("mult")) {
-                    addSeekBar("Multiplier", "mult", config.optDouble("mult", 2.0).toFloat(), 1.0f, 10.0f)
+                // Mirror the actual config keys used by ScriptExecutor so the
+                // toggles and the runtime agree.
+                addToggle("God mode", "godmode", config.flagOn("godmode"))
+                addToggle("Fly", "fly", config.flagOn("fly"))
+                addToggle("Speed", "speedEnabled", config.flagOn("speed"))
+                addToggle("No recoil", "nocrecoil", config.optDouble("recoilScale", 1.0) <= 0.0)
+                addToggle("One hit", "oneHit", config.flagOn("oneHit"))
+                addToggle("Coin magnet", "coinMagnet", config.flagOn("coinMagnet"))
+                addToggle("X-ray", "xray", config.flagOn("xray"))
+                addToggle("Auto play", "autoPlay", config.flagOn("autoPlay"))
+                addToggle("Always impostor", "alwaysImpostor", config.flagOn("alwaysImpostor"))
+                addSeekBar("Kill range", "killRange", config.optDouble("killRange", 0.0).toFloat(), 0f, 20f)
+                addSeekBar("Speed value", "speedValue", config.optDouble("speed", 2.0).toFloat(), 1f, 10f)
+            }
+            else -> {
+                val tv = TextView(this).apply {
+                    text = "No options for this script type."
+                    setTextColor(0xFFFFFFFF.toInt())
                 }
+                binding.container.addView(tv)
             }
         }
     }
 
     private fun addToggle(label: String, key: String, checked: Boolean) {
-        val cb = CheckBox(this)
-        cb.text = label
-        cb.isChecked = checked
-        cb.setTextColor(-1)
-        cb.tag = key
+        val cb = CheckBox(this).apply {
+            text = label
+            isChecked = checked
+            setTextColor(0xFFFFFFFF.toInt())
+            tag = key
+        }
         binding.container.addView(cb)
     }
 
     private fun addSeekBar(label: String, key: String, value: Float, min: Float, max: Float) {
-        val row = LinearLayout(this)
-        row.orientation = LinearLayout.HORIZONTAL
-        val tv = TextView(this)
-        tv.text = "$label: ${String.format("%.1f", value)}"
-        tv.setTextColor(-1)
-        tv.layoutParams = LinearLayout.LayoutParams(200, LinearLayout.LayoutParams.WRAP_CONTENT)
-        val sb = SeekBar(this)
-        sb.tag = key // tag stays as the config key String
-        sb.max = ((max - min) * 10).toInt()
-        sb.progress = ((value - min) * 10).toInt()
-        sb.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        sb.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                val v = min + progress / 10f
-                tv.text = "$label: ${String.format("%.1f", v)}"
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
+        seekBounds[key] = min to max
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        val tv = TextView(this).apply {
+            text = "$label: ${fmt(value)}"
+            setTextColor(0xFFFFFFFF.toInt())
+            layoutParams = LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        val sb = SeekBar(this).apply {
+            tag = key
+            max = ((max - min) * 10).toInt().coerceAtLeast(1)
+            progress = (((value - min) * 10).toInt()).coerceIn(0, max)
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                    tv.text = "$label: ${fmt(min + progress / 10f)}"
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar) {}
+            })
+        }
         row.addView(tv)
         row.addView(sb)
         binding.container.addView(row)
     }
 
     private fun addSpinner(label: String, key: String, items: Array<String>, selected: Int) {
-        val tv = TextView(this)
-        tv.text = label
-        tv.setTextColor(-1)
+        val tv = TextView(this).apply {
+            text = label
+            setTextColor(0xFFFFFFFF.toInt())
+        }
         binding.container.addView(tv)
-        val sp = Spinner(this)
-        sp.tag = key
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items)
-        sp.adapter = adapter
-        sp.setSelection(selected)
+        val sp = Spinner(this).apply {
+            tag = key
+            adapter = ArrayAdapter(this@GameScreenActivity, android.R.layout.simple_spinner_dropdown_item, items)
+            setSelection(selected.coerceIn(0, items.size - 1))
+        }
         binding.container.addView(sp)
     }
 
     private fun saveFeatures() {
         val count = binding.container.childCount
         for (i in 0 until count) {
-            val v = binding.container.getChildAt(i)
-            when (v) {
+            when (val v = binding.container.getChildAt(i)) {
                 is CheckBox -> {
-                    val key = v.tag as? String ?: v.text.toString()
+                    val key = v.tag as? String ?: continue
+                    // "speedEnabled" is the UI toggle for the numeric "speed"
+                    // knob; the runtime reads "speed" as a number.
+                    if (key == "speedEnabled") {
+                        config.put("speedEnabled", v.isChecked)
+                        if (!v.isChecked) config.put("speed", 0.0)
+                        continue
+                    }
                     config.put(key, v.isChecked)
                 }
                 is LinearLayout -> {
-                    // Row contains TextView + SeekBar; read progress from seekbar directly
-                    val seekBar = v.getChildAt(1)
-                    if (seekBar is SeekBar) {
-                        val key = seekBar.tag as? String
-                        val min = 0.0f
-                        val max = (seekBar.max / 10f) + min
-                        val value = min + seekBar.progress / 10f
-                        if (key != null) config.put(key, value)
+                    val seekBar = v.getChildAt(1) as? SeekBar ?: continue
+                    val key = seekBar.tag as? String ?: continue
+                    val (min, max) = seekBounds[key] ?: continue
+                    val value = min + seekBar.progress / 10f
+                    if (key == "speedValue") {
+                        config.put("speed", value.toDouble())
+                        config.put("multiplier", value.toDouble())
+                    } else {
+                        config.put(key, value.toDouble())
                     }
                 }
                 is Spinner -> {
-                    val key = v.tag as? String
-                    val value = (v as Spinner).selectedItem.toString()
-                    if (key != null) config.put(key, value)
+                    val key = v.tag as? String ?: continue
+                    config.put(key, v.selectedItem?.toString() ?: "")
                 }
             }
         }
-        // Persist modified config so ScriptExecutor can read it at run time.
+
         val prefs: SharedPreferences = getSharedPreferences("runner_config", Context.MODE_PRIVATE)
         prefs.edit().putString("script_config_${gameName}_${scriptName}", config.toString()).apply()
     }
+
+    private fun fmt(v: Float): String = String.format("%.1f", v)
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 }

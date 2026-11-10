@@ -47,7 +47,15 @@ Bypasses are declared per-script in `scripts.json` under `"bypass"` and applied 
 
 ## Build
 
-Requires a normal machine (this sandbox cannot run Gradle due to grsecurity/PaX blocking the JVM).
+The Gradle wrapper is committed, so the build is reproducible anywhere.
+
+### Option A — GitHub Actions (recommended)
+
+Push the repo to GitHub. The workflow at `.github/workflows/build.yml` builds both debug and release APKs and uploads them as artifacts (Actions tab → workflow run → Artifacts). No local setup needed.
+
+### Option B — local build
+
+Requires JDK 17+, Android SDK, and NDK 26.1.10909125.
 
 ```
 export ANDROID_HOME=$HOME/Android/Sdk

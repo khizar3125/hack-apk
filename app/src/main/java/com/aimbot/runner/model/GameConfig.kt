@@ -1,6 +1,5 @@
 package com.aimbot.runner.model
 
-import org.json.JSONArray
 import org.json.JSONObject
 
 data class GameConfig(
@@ -9,6 +8,7 @@ data class GameConfig(
     val module: String,
     val offsets: JSONObject?,
     val anticheat: String? = null,
+    val category: String? = null,
     val bypass: List<String>? = null,
     val features: List<String>? = null,
     val research: String? = null

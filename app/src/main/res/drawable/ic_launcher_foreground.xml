@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="#66fcf1" />
-    <size android:width="48dp" android:height="48dp" />
-</shape>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- outer ring -->
+    <path
+        android:fillColor="#66fcf1"
+        android:pathData="M54,28 A26,26 0 1,0 54,80 A26,26 0 1,0 54,28 Z" />
+    <!-- inner dark ring -->
+    <path
+        android:fillColor="#0b0c10"
+        android:pathData="M54,36 A18,18 0 1,0 54,72 A18,18 0 1,0 54,36 Z" />
+    <!-- center dot -->
+    <path
+        android:fillColor="#45a29e"
+        android:pathData="M54,45 A9,9 0 1,0 54,63 A9,9 0 1,0 54,45 Z" />
+    <!-- tick marks -->
+    <path
+        android:strokeColor="#66fcf1"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M54,22 L54,32 M54,76 L54,86 M22,54 L32,54 M76,54 L86,54" />
+</vector>

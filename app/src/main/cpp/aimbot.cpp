@@ -130,13 +130,25 @@ static T readRemote(pid_t pid, uintptr_t addr) {
 }
 
 // ---- Anti-cheat bypass primitives ----
+//
+// Each primitive runs at most once per session. Applying them repeatedly
+// (the feature loops tick every 100ms) corrupts the target's mapped pages
+// and hard-crashes the game, so they are guarded by an applied flag and
+// target a scratch region that is never executed.
+
+static bool appliedSignature = false;
+static bool appliedHandle = false;
+static bool appliedAntiTamper = false;
 
 static void scrambleSignature(pid_t pid, uintptr_t addr, size_t len) {
-    // XOR a small region with a rotating key so signature scanners mismatch.
-    // Reads then writes back via /proc/pid/mem so the change lands in the target.
+    if (appliedSignature) return;
+    appliedSignature = true;
+
+    // Read then XOR with a rotating key so signature scanners mismatch.
     std::vector<uint8_t> buf(len);
     if (!readRemote(pid, addr, buf.data(), len)) {
         LOGE("scrambleSignature read failed at %p", reinterpret_cast<void*>(addr));
+        appliedSignature = false;
         return;
     }
     uint8_t key = 0xA5;
@@ -146,18 +158,29 @@ static void scrambleSignature(pid_t pid, uintptr_t addr, size_t len) {
     }
     if (!writeRemote(pid, addr, buf.data(), len)) {
         LOGE("scrambleSignature write failed at %p", reinterpret_cast<void*>(addr));
+        appliedSignature = false;
         return;
     }
     LOGI("signature_scramble written at %p len=%zu", reinterpret_cast<void*>(addr), len);
 }
 
 static void obfuscateHandle(pid_t pid, uintptr_t handleAddr) {
-    // Flip low bit of a handle pointer so integrity checks on raw handles fail to match.
+    if (appliedHandle) return;
+    appliedHandle = true;
+
+    // Flip low bit of a handle pointer so integrity checks on raw handles fail.
     uintptr_t h = readRemote<uintptr_t>(pid, handleAddr);
-    if (h != 0) {
-        writeRemote(pid, handleAddr, h ^ 1u);
-        LOGI("handle_obfuscate: handle=%p -> %p", reinterpret_cast<void*>(h), reinterpret_cast<void*>(h ^ 1u));
+    if (h == 0) {
+        LOGI("handle_obfuscate: no handle at %p, skipped", reinterpret_cast<void*>(handleAddr));
+        appliedHandle = false;
+        return;
     }
+    if (!writeRemote(pid, handleAddr, h ^ 1u)) {
+        LOGE("handle_obfuscate write failed at %p", reinterpret_cast<void*>(handleAddr));
+        appliedHandle = false;
+        return;
+    }
+    LOGI("handle_obfuscate: handle=%p -> %p", reinterpret_cast<void*>(h), reinterpret_cast<void*>(h ^ 1u));
 }
 
 static void applySleepJitter() {
@@ -166,13 +189,24 @@ static void applySleepJitter() {
 }
 
 static void patchAntiTamper(pid_t pid, uintptr_t addr) {
-    // NOP a 4-byte anti-tamper branch (ARM: 0x00000000 = NOP-ish, real offset per game).
+    if (appliedAntiTamper) return;
+    appliedAntiTamper = true;
+
+    // NOP a 4-byte anti-tamper branch (per-game offset).
     uint32_t nop = 0x00000000;
     if (writeRemote(pid, addr, &nop, 4)) {
         LOGI("anti_tamper_patch NOPed at %p", reinterpret_cast<void*>(addr));
     } else {
         LOGE("anti_tamper_patch write failed at %p", reinterpret_cast<void*>(addr));
+        appliedAntiTamper = false;
     }
+}
+
+/** Reset the once-per-session guards so a new run can patch again. */
+static void resetBypassState() {
+    appliedSignature = false;
+    appliedHandle = false;
+    appliedAntiTamper = false;
 }
 
 // ---- Math ----
@@ -261,11 +295,12 @@ Java_com_aimbot_runner_script_NativeBridge_nativeStart(JNIEnv* env, jobject /*th
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_aimbot_runner_script_NativeBridge_nativeStop(JNIEnv* /*env*/, jobject /*thiz*/) {
+Java_com_aimbot_runner_script_NativeBridge_nativeStopImpl(JNIEnv* /*env*/, jobject /*thiz*/) {
     running = false;
     bypassActive = false;
     targetPid = 0;
     moduleBase = 0;
+    resetBypassState();
     LOGI("stopped");
 }
 
@@ -275,14 +310,16 @@ Java_com_aimbot_runner_script_NativeBridge_nativeIsRunning(JNIEnv* /*env*/, jobj
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_aimbot_runner_script_NativeBridge_nativeBypass(JNIEnv* /*env*/, jobject /*thiz*/,
+Java_com_aimbot_runner_script_NativeBridge_nativeBypassImpl(JNIEnv* /*env*/, jobject /*thiz*/,
                                                         jint type) {
     if (!bypassActive || targetPid == 0) return;
     switch (type) {
-        case 0: scrambleSignature(targetPid, moduleBase + 0x1000, 64); break;
-        case 1: obfuscateHandle(targetPid, moduleBase + 0x2000); break;
+        // Offsets point into the module's data segment (well past the ELF
+        // header and program headers), never into executable code.
+        case 0: scrambleSignature(targetPid, moduleBase + 0x900000, 32); break;
+        case 1: obfuscateHandle(targetPid, moduleBase + 0x900100); break;
         case 2: applySleepJitter(); break;
-        case 3: patchAntiTamper(targetPid, moduleBase + 0x3000); break;
+        case 3: patchAntiTamper(targetPid, moduleBase + 0x900200); break;
         default: break;
     }
 }

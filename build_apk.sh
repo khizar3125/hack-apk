@@ -14,11 +14,8 @@ if [ ! -f local.properties ]; then
   echo "sdk.dir=$ANDROID_HOME" > local.properties
 fi
 
-echo "[1/3] Downloading gradle wrapper..."
-gradle wrapper --gradle-version 8.11.1
+echo "[1/2] Building debug APK..."
+./gradlew --no-daemon assembleDebug
 
-echo "[2/3] Building debug APK..."
-./gradlew assembleDebug
-
-echo "[3/3] APK location:"
+echo "[2/2] APK location:"
 ls -lh app/build/outputs/apk/debug/app-debug.apk

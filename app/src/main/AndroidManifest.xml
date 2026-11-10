@@ -7,10 +7,8 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.ACCESSIBILITY_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -39,17 +37,32 @@
         <service
             android:name=".ScriptService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the memory reading engine alive while a script is active." />
+        </service>
 
+        <!-- No BIND_SYSTEM_ALERT_WINDOW permission here: that is a signature-level
+             permission only the system can hold, and declaring it makes the app
+             unable to start its own overlay service. -->
         <service
             android:name=".OverlayService"
             android:exported="false"
-            android:permission="android.permission.BIND_SYSTEM_ALERT_WINDOW" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Draws the ESP overlay on top of the running game." />
+        </service>
 
         <service
             android:name=".FloatingIconService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating menu overlay used to control scripts while a game is running." />
+        </service>
 
         <service
             android:name=".InputInjector"
@@ -63,7 +76,8 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <receiver android:name=".BootReceiver"
+        <receiver
+            android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
