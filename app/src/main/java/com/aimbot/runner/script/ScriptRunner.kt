@@ -5,6 +5,7 @@ import android.util.Log
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
 import com.aimbot.runner.root.MemoryEngine
+import com.aimbot.runner.root.NonRootInputInjector
 import com.aimbot.runner.root.RootAccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,6 +21,9 @@ class ScriptRunner(private val context: Context) {
     private var currentGame: GameConfig? = null
     private var currentScript: ScriptConfig? = null
     private var running = false
+    /** When true, memory attach is skipped and scripts run via accessibility input only. */
+    var nonRootMode: Boolean = false
+        private set
 
     /** Reason the last start() failed, surfaced to the UI. */
     @Volatile
@@ -29,7 +33,14 @@ class ScriptRunner(private val context: Context) {
     fun loadGames(): List<GameConfig> {
         val list = mutableListOf<GameConfig>()
         try {
-            val json = context.assets.open("games.json").bufferedReader().use { it.readText() }
+            // Prefer saved offsets from internal storage (written by AutoConfigActivity)
+            val savedFile = java.io.File(context.filesDir, "games.json")
+            val json: String
+            if (savedFile.exists()) {
+                json = savedFile.bufferedReader().use { it.readText() }
+            } else {
+                json = context.assets.open("games.json").bufferedReader().use { it.readText() }
+            }
             val arr = JSONArray(json)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
@@ -103,6 +114,7 @@ class ScriptRunner(private val context: Context) {
         if (running) stop()
         currentGame = game
         currentScript = script
+        nonRootMode = false
 
         if (!RootAccess.probe()) {
             lastError = "Root access is required to read game memory. " +
@@ -141,6 +153,29 @@ class ScriptRunner(private val context: Context) {
 
         running = true
         Log.i("ScriptRunner", "engine live for ${game.name} pid=${engine.pid}")
+        return true
+    }
+
+    /**
+     * Non-root mode: skips memory attach entirely. Scripts run through
+     * AccessibilityService gestures (tap/swipe) only. No memory read/write
+     * is possible, so aimbot/ESP/wallhack are unavailable here — only
+     * auto-tap, auto-fire, auto-play and overlay drawing work.
+     */
+    fun startNonRoot(game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int): Boolean {
+        if (running) stop()
+        currentGame = game
+        currentScript = script
+        nonRootMode = true
+
+        NonRootInputInjector.init(context)
+        NonRootInputInjector.bindService(
+            NonRootAccessibilityService.instance, screenW, screenH
+        )
+
+        running = true
+        lastError = ""
+        Log.i("ScriptRunner", "non-root mode live for ${game.name}")
         return true
     }
 

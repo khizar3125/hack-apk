@@ -22,4 +22,12 @@
     <string name="stat_games">Games</string>
     <string name="stat_scripts">Scripts</string>
     <string name="stat_status">Engine</string>
+    <string name="btn_auto_config">Auto Config</string>
+    <string name="label_non_root">Non-root mode</string>
+    <string name="note_root_mode">Root mode: memory read/write enabled. Root access required.</string>
+    <string name="note_non_root_mode">Non-root mode: memory features disabled. Auto-tap / auto-fire / auto-play work via AccessibilityService.</string>
+    <string name="btn_accessibility">Accessibility</string>
+    <string name="btn_capture">Screen Capture</string>
+    <string name="perm_accessibility_note">Enable AccessibilityService for Runner in Settings to use non-root input.</string>
+    <string name="perm_capture_note">Grant screen capture permission for non-root ESP overlay.</string>
 </resources>

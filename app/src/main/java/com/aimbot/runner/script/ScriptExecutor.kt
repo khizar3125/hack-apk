@@ -85,6 +85,17 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         screenW: Int,
         screenH: Int
     ) {
+        // Non-root mode: only accessibility-based features work.
+        if (runner.nonRootMode) {
+            when (script.type.lowercase()) {
+                "aimbot" -> startNonRootUnavailable(key, "Aimbot")
+                "esp" -> startNonRootUnavailable(key, "ESP")
+                "misc" -> startNonRootMisc(key, cfg, screenW, screenH)
+                else -> Log.w("ScriptExecutor", "unknown script type: ${script.type}")
+            }
+            return
+        }
+
         when (script.type.lowercase()) {
             "aimbot" -> startAimbot(key, game, cfg, screenW, screenH)
             "esp" -> startEsp(key, game, cfg, screenW, screenH)
@@ -93,17 +104,41 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         }
     }
 
+    /** Non-root misc: only accessibility-based features run; memory features are skipped. */
+    private fun startNonRootMisc(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+        var started = 0
+
+        if (cfg.flagOn("autoTap")) {
+            startNonRootAutoTap(key, cfg, screenW, screenH); started++
+        }
+        if (cfg.flagOn("autoFire")) {
+            startNonRootAutoFire(key, cfg, screenW, screenH); started++
+        }
+        if (cfg.flagOn("autoPlay")) {
+            startNonRootAutoPlay(key, cfg, screenW, screenH); started++
+        }
+
+        // Memory-based features are silently skipped in non-root mode.
+        val memFeatures = listOf("fly", "speed", "nocrecoil", "coinMagnet", "xray", "fullbright", "rapidFire")
+        for (f in memFeatures) {
+            if (cfg.flagOn(f)) {
+                startNonRootUnavailable(key, f)
+            }
+        }
+
+        if (started == 0) {
+            Log.w("ScriptExecutor", "non-root misc script matched no known feature flag")
+        }
+    }
+
     /**
      * "misc" scripts are bundles of independent features. Each flag in the
-     * config starts its own loop, so a single "Godmode" script with
-     * {"godmode":true,"fly":true,"speed":2.0} runs all three.
+     * config starts its own loop, so a single script with
+     * {"fly":true,"speed":2.0} runs all enabled loops.
      */
     private fun startMisc(key: String, game: GameConfig, cfg: JSONObject, screenW: Int, screenH: Int) {
         var started = 0
 
-        if (cfg.flagOn("godmode")) {
-            startGodmode(key, game, cfg); started++
-        }
         if (cfg.flagOn("fly")) {
             startFly(key, game, cfg); started++
         }
@@ -113,9 +148,6 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         if (cfg.flagOn("nocrecoil") || cfg.optDouble("recoilScale", 1.0) <= 0.0) {
             startNoRecoil(key, game, cfg); started++
         }
-        if (cfg.flagOn("oneHit") || cfg.flagOn("onehit")) {
-            startOneHit(key, game, cfg); started++
-        }
         if (cfg.flagOn("coinMagnet")) {
             startCoinMagnet(key, game, cfg); started++
         }
@@ -124,12 +156,6 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         }
         if (cfg.flagOn("autoPlay")) {
             startAutoPlay(key, cfg, screenW, screenH); started++
-        }
-        if (cfg.flagOn("alwaysImpostor")) {
-            startImpostorHighlight(key, game, cfg); started++
-        }
-        if (cfg.optDouble("killRange", 0.0) > 0.0) {
-            startKillRange(key, game, cfg); started++
         }
         if (cfg.flagOn("rapidFire")) {
             startRapidFire(key, game, cfg); started++
@@ -289,14 +315,6 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         thread.start()
     }
 
-    private fun startGodmode(key: String, game: GameConfig, cfg: JSONObject) {
-        val addr = offs(game, "healthAddr")
-        val value = cfg.optInt("healthValue", 99999)
-        loop(key, 80) {
-            if (addr != 0L) engine.writeInt(engine.moduleBase + addr, value)
-        }
-    }
-
     private fun startFly(key: String, game: GameConfig, cfg: JSONObject) {
         val addr = offs(game, "flyAddr")
         loop(key, 60) {
@@ -317,14 +335,6 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         val scale = cfg.optDouble("recoilScale", 0.0).toFloat()
         loop(key, 60) {
             if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, scale)
-        }
-    }
-
-    private fun startOneHit(key: String, game: GameConfig, cfg: JSONObject) {
-        val addr = offs(game, "damageAddr")
-        val value = cfg.optInt("damageValue", 99999)
-        loop(key, 60) {
-            if (addr != 0L) engine.writeInt(engine.moduleBase + addr, value)
         }
     }
 
@@ -363,22 +373,6 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         }
     }
 
-    private fun startImpostorHighlight(key: String, game: GameConfig, cfg: JSONObject) {
-        val addr = offs(game, "roleAddr")
-        val value = cfg.optInt("roleValue", 1)
-        loop(key, 100) {
-            if (addr != 0L) engine.writeInt(engine.moduleBase + addr, value)
-        }
-    }
-
-    private fun startKillRange(key: String, game: GameConfig, cfg: JSONObject) {
-        val addr = offs(game, "killRangeAddr")
-        val range = cfg.optDouble("killRange", 5.0).toFloat()
-        loop(key, 100) {
-            if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, range)
-        }
-    }
-
     private fun startRapidFire(key: String, game: GameConfig, cfg: JSONObject) {
         val addr = offs(game, "fireRateAddr")
         val rate = cfg.optDouble("rapidFireRate", 0.05).toFloat()
@@ -390,5 +384,106 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
     /** Fallback for misc scripts with no recognised flag: keep the engine alive. */
     private fun startGeneric(key: String) {
         loop(key, 200) { }
+    }
+
+    /* ---------- non-root feature loops (AccessibilityService gestures) ---------- */
+
+    /** Repeatedly taps configured screen points using AccessibilityService (no root). */
+    private fun startNonRootAutoTap(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+        val taps = cfg.optJSONArray("tapPoints")
+        if (taps == null) return
+        val thread = Thread {
+            while (active[key] == true && !Thread.interrupted()) {
+                try {
+                    for (i in 0 until taps.length()) {
+                        if (active[key] != true) break
+                        val p = taps.getJSONObject(i)
+                        val x = p.optDouble("x", 0.0).toFloat()
+                        val y = p.optDouble("y", 0.0).toFloat()
+                        NonRootInputInjector.tap(x, y)
+                        Thread.sleep(150)
+                    }
+                } catch (e: InterruptedException) {
+                    break
+                } catch (e: Exception) {
+                    Log.e("ScriptExecutor", "non-root auto-tap error", e)
+                    break
+                }
+            }
+        }
+        thread.isDaemon = true
+        thread.start()
+    }
+
+    /** Auto-fire: taps a fire button point repeatedly (no root). */
+    private fun startNonRootAutoFire(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+        val x = cfg.optDouble("fireX", screenW * 0.9).toFloat()
+        val y = cfg.optDouble("fireY", screenH * 0.9).toFloat()
+        val interval = cfg.optLong("fireInterval", 200)
+        val thread = Thread {
+            while (active[key] == true && !Thread.interrupted()) {
+                try {
+                    NonRootInputInjector.tap(x, y)
+                    Thread.sleep(interval.coerceAtLeast(50))
+                } catch (e: InterruptedException) {
+                    break
+                } catch (e: Exception) {
+                    Log.e("ScriptExecutor", "non-root auto-fire error", e)
+                    break
+                }
+            }
+        }
+        thread.isDaemon = true
+        thread.start()
+    }
+
+    /** Auto-play loop: tap + swipe sequence using AccessibilityService (no root). */
+    private fun startNonRootAutoPlay(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+        val taps = cfg.optJSONArray("tapPoints")
+        val swipes = cfg.optJSONArray("swipePoints")
+        val thread = Thread {
+            while (active[key] == true && !Thread.interrupted()) {
+                try {
+                    if (taps != null) {
+                        for (i in 0 until taps.length()) {
+                            if (active[key] != true) break
+                            val p = taps.getJSONObject(i)
+                            NonRootInputInjector.tap(
+                                p.optDouble("x", 0.0).toFloat(),
+                                p.optDouble("y", 0.0).toFloat()
+                            )
+                            Thread.sleep(120)
+                        }
+                    }
+                    if (swipes != null) {
+                        for (i in 0 until swipes.length()) {
+                            if (active[key] != true) break
+                            val p = swipes.getJSONObject(i)
+                            NonRootInputInjector.swipe(
+                                p.optDouble("x1", 0.0).toFloat(),
+                                p.optDouble("y1", 0.0).toFloat(),
+                                p.optDouble("x2", screenW.toFloat()).toFloat(),
+                                p.optDouble("y2", screenH.toFloat()).toFloat(),
+                                400
+                            )
+                            Thread.sleep(200)
+                        }
+                    }
+                } catch (e: InterruptedException) {
+                    break
+                } catch (e: Exception) {
+                    Log.e("ScriptExecutor", "non-root auto-play error", e)
+                    break
+                }
+            }
+        }
+        thread.isDaemon = true
+        thread.start()
+    }
+
+    /** Memory-based features are unavailable without root; this is a safe no-op. */
+    private fun startNonRootUnavailable(key: String, feature: String) {
+        Log.w("ScriptExecutor", "$feature requires root access. " +
+            "Enable root or use a rooted device for memory-based features.")
     }
 }

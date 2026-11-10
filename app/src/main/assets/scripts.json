@@ -43,17 +43,6 @@
     }
   },
   {
-    "name": "Magic Bullet",
-    "type": "misc",
-    "game": "PUBG Mobile",
-    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
-    "config": {
-      "enabled": true,
-      "oneHit": true,
-      "damageValue": 99999
-    }
-  },
-  {
     "name": "Speed",
     "type": "misc",
     "game": "PUBG Mobile",
@@ -168,17 +157,6 @@
       "enabled": true,
       "rapidFire": true,
       "rapidFireRate": 0.05
-    }
-  },
-  {
-    "name": "One Hit",
-    "type": "misc",
-    "game": "Call of Duty Mobile",
-    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
-    "config": {
-      "enabled": true,
-      "oneHit": true,
-      "damageValue": 99999
     }
   },
   {
@@ -298,8 +276,7 @@
     "bypass": ["sleep_jitter"],
     "config": {
       "enabled": true,
-      "speed": 2.0,
-      "godmode": true
+      "speed": 2.0
     }
   },
   {
@@ -331,31 +308,6 @@
       "name": true,
       "health": true,
       "snapline": false
-    }
-  },
-  {
-    "name": "God Mode",
-    "type": "misc",
-    "game": "Genshin Impact",
-    "bypass": ["signature_scramble", "handle_obfuscate", "sleep_jitter", "anti_tamper_patch"],
-    "config": {
-      "enabled": true,
-      "godmode": true,
-      "speed": 2.0,
-      "oneHit": true,
-      "damageValue": 99999
-    }
-  },
-  {
-    "name": "Always Impostor",
-    "type": "misc",
-    "game": "Among Us",
-    "bypass": ["sleep_jitter"],
-    "config": {
-      "enabled": true,
-      "alwaysImpostor": true,
-      "roleValue": 1,
-      "killRange": 8.0
     }
   },
   {
@@ -458,17 +410,17 @@
     }
   },
   {
-    "name": "God Mode",
+    "name": "Speed",
     "type": "misc",
     "game": "Subway Surfers",
     "bypass": ["sleep_jitter"],
     "config": {
       "enabled": true,
-      "godmode": true
+      "speed": 2.0
     }
   },
   {
-    "name": "Full Boost",
+    "name": "Speed",
     "type": "misc",
     "game": "Temple Run 2",
     "bypass": ["sleep_jitter"],
@@ -476,8 +428,7 @@
       "enabled": true,
       "speed": 2.0,
       "coinMagnet": true,
-      "coinMagnetRadius": 1200.0,
-      "godmode": true
+      "coinMagnetRadius": 1200.0
     }
   },
   {
@@ -487,8 +438,7 @@
     "bypass": ["sleep_jitter"],
     "config": {
       "enabled": true,
-      "speed": 2.5,
-      "godmode": true
+      "speed": 2.5
     }
   },
   {
@@ -513,7 +463,6 @@
     "config": {
       "enabled": true,
       "autoPlay": true,
-      "godmode": true,
       "tapPoints": [
         { "x": 0.3, "y": 0.5 },
         { "x": 0.7, "y": 0.5 }
@@ -562,20 +511,6 @@
       "name": true,
       "health": true,
       "snapline": true
-    }
-  },
-  {
-    "name": "God Mode",
-    "type": "misc",
-    "game": "Gangster Mirage City",
-    "bypass": ["sleep_jitter", "signature_scramble", "handle_obfuscate"],
-    "config": {
-      "enabled": true,
-      "godmode": true,
-      "fly": true,
-      "speed": 2.0,
-      "oneHit": true,
-      "damageValue": 99999
     }
   }
 ]

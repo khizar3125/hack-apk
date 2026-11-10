@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Auto Config - Memory Scanner"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+        <Spinner
+            android:id="@+id/spinnerGame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnAttach"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Attach to Game"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Not attached"
+            android:textColor="#66FCF1"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Value scanning -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Value Scanner"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/edtValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter value (e.g. 100 for health)"
+            android:inputType="numberDecimal"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#99AA55"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnScanValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="First Scan"
+            android:layout_marginBottom="4dp" />
+
+        <Button
+            android:id="@+id/btnFilter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Filter Scan"
+            android:layout_marginBottom="4dp" />
+
+        <Button
+            android:id="@+id/btnChanged"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Changed Scan"
+            android:layout_marginBottom="4dp" />
+
+        <Button
+            android:id="@+id/btnUnchanged"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Unchanged Scan"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Pattern scanning -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pattern Scanner (Signature)"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/edtPatternName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Pattern name (e.g. entity_list)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#99AA55"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/edtPattern"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Hex signature e.g. 48 8B 05 ?? ?? ?? ?? 48 8B"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#99AA55"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnScanPattern"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scan Pattern"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnSaveOffsets"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save Discovered Offsets"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tvResults"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:text="Results appear here"
+            android:textColor="#99AA55"
+            android:textSize="12sp"
+            android:background="#1A1F2E"
+            android:padding="8dp" />
+
+    </LinearLayout>
+</ScrollView>

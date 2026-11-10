@@ -35,6 +35,7 @@ class GameScreenActivity : AppCompatActivity() {
     private var scriptName = ""
     private var scriptType = ""
     private var config = JSONObject()
+    private var nonRootMode: Boolean = false
 
     // Seekbar bounds are tracked per key so saveFeatures() can reverse the
     // progress back to a real value instead of assuming min=0.
@@ -54,9 +55,19 @@ class GameScreenActivity : AppCompatActivity() {
         } catch (_: Exception) {
             JSONObject()
         }
+        nonRootMode = intent.getBooleanExtra("non_root_mode", false)
 
         binding.tvGameName.text = "Game: $gameName"
         binding.tvScriptName.text = "Script: $scriptName ($scriptType)"
+
+        if (nonRootMode) {
+            val tv = TextView(this).apply {
+                text = "Non-root mode: memory features disabled. Use auto-tap / auto-fire / auto-play."
+                setTextColor(0xFFFFFF00.toInt())
+                textSize = 14f
+            }
+            binding.container.addView(tv)
+        }
 
         buildFeatureToggles()
 
@@ -75,36 +86,62 @@ class GameScreenActivity : AppCompatActivity() {
 
         when (scriptType.lowercase()) {
             "aimbot" -> {
-                addToggle("Aimbot enabled", "aimbot", config.optBoolean("aimbot", config.optBoolean("enabled", true)))
-                addToggle("Auto fire", "autoFire", config.optBoolean("autoFire", false))
-                addToggle("Team check", "teamCheck", config.optBoolean("teamCheck", false))
-                addSeekBar("FOV", "fov", config.optDouble("fov", 90.0).toFloat(), 30f, 120f)
-                addSeekBar("Smooth", "smooth", config.optDouble("smooth", 1.0).toFloat(), 0.5f, 3.0f)
-                addSeekBar("Aim FOV", "aimFov", config.optDouble("aimFov", 80.0).toFloat(), 30f, 120f)
-                addSpinner("Bone", "bone", arrayOf("head", "neck", "chest"), 0)
+                if (!nonRootMode) {
+                    addToggle("Aimbot enabled", "aimbot", config.optBoolean("aimbot", config.optBoolean("enabled", true)))
+                    addToggle("Auto fire", "autoFire", config.optBoolean("autoFire", false))
+                    addToggle("Team check", "teamCheck", config.optBoolean("teamCheck", false))
+                    addSeekBar("FOV", "fov", config.optDouble("fov", 90.0).toFloat(), 30f, 120f)
+                    addSeekBar("Smooth", "smooth", config.optDouble("smooth", 1.0).toFloat(), 0.5f, 3.0f)
+                    addSeekBar("Aim FOV", "aimFov", config.optDouble("aimFov", 80.0).toFloat(), 30f, 120f)
+                    addSpinner("Bone", "bone", arrayOf("head", "neck", "chest"), 0)
+                } else {
+                    val tv = TextView(this).apply {
+                        text = "Aimbot needs root (memory read). Non-root: use Auto tap / Auto fire instead."
+                        setTextColor(0xFFFFFF00.toInt())
+                        textSize = 14f
+                    }
+                    binding.container.addView(tv)
+                }
             }
             "esp" -> {
-                addToggle("Box", "box", config.optBoolean("box", true))
-                addToggle("Skeleton", "skeleton", config.optBoolean("skeleton", true))
-                addToggle("Distance", "distance", config.optBoolean("distance", true))
-                addToggle("Health", "health", config.optBoolean("health", true))
-                addToggle("Name", "name", config.optBoolean("name", true))
-                addToggle("Snapline", "snapline", config.optBoolean("snapline", true))
+                if (!nonRootMode) {
+                    addToggle("Box", "box", config.optBoolean("box", true))
+                    addToggle("Skeleton", "skeleton", config.optBoolean("skeleton", true))
+                    addToggle("Distance", "distance", config.optBoolean("distance", true))
+                    addToggle("Health", "health", config.optBoolean("health", true))
+                    addToggle("Name", "name", config.optBoolean("name", true))
+                    addToggle("Snapline", "snapline", config.optBoolean("snapline", true))
+                } else {
+                    val tv = TextView(this).apply {
+                        text = "ESP needs root (memory read). Non-root: enable Screen Capture for color-based overlay."
+                        setTextColor(0xFFFFFF00.toInt())
+                        textSize = 14f
+                    }
+                    binding.container.addView(tv)
+                }
             }
             "misc" -> {
                 // Mirror the actual config keys used by ScriptExecutor so the
                 // toggles and the runtime agree.
-                addToggle("God mode", "godmode", config.flagOn("godmode"))
-                addToggle("Fly", "fly", config.flagOn("fly"))
-                addToggle("Speed", "speedEnabled", config.flagOn("speed"))
-                addToggle("No recoil", "nocrecoil", config.optDouble("recoilScale", 1.0) <= 0.0)
-                addToggle("One hit", "oneHit", config.flagOn("oneHit"))
-                addToggle("Coin magnet", "coinMagnet", config.flagOn("coinMagnet"))
-                addToggle("X-ray", "xray", config.flagOn("xray"))
+                if (!nonRootMode) {
+                    addToggle("God mode", "godmode", config.flagOn("godmode"))
+                    addToggle("Fly", "fly", config.flagOn("fly"))
+                    addToggle("No recoil", "nocrecoil", config.optDouble("recoilScale", 1.0) <= 0.0)
+                    addToggle("One hit", "oneHit", config.flagOn("oneHit"))
+                    addToggle("Coin magnet", "coinMagnet", config.flagOn("coinMagnet"))
+                    addToggle("X-ray", "xray", config.flagOn("xray"))
+                    addToggle("Always impostor", "alwaysImpostor", config.flagOn("alwaysImpostor"))
+                    addSeekBar("Kill range", "killRange", config.optDouble("killRange", 0.0).toFloat(), 0f, 20f)
+                    addSeekBar("Speed value", "speedValue", config.optDouble("speed", 2.0).toFloat(), 1f, 10f)
+                }
+                // These work in both root and non-root modes.
+                addToggle("Speed (non-root)", "speedEnabled", config.flagOn("speed"))
                 addToggle("Auto play", "autoPlay", config.flagOn("autoPlay"))
-                addToggle("Always impostor", "alwaysImpostor", config.flagOn("alwaysImpostor"))
-                addSeekBar("Kill range", "killRange", config.optDouble("killRange", 0.0).toFloat(), 0f, 20f)
-                addSeekBar("Speed value", "speedValue", config.optDouble("speed", 2.0).toFloat(), 1f, 10f)
+                if (nonRootMode) {
+                    addToggle("Auto tap", "autoTap", config.flagOn("autoTap"))
+                    addToggle("Auto fire", "autoFire", config.flagOn("autoFire"))
+                    addSeekBar("Fire interval (ms)", "fireInterval", config.optLong("fireInterval", 200).toFloat(), 50f, 2000f)
+                }
             }
             else -> {
                 val tv = TextView(this).apply {

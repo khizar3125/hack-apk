@@ -60,6 +60,23 @@ class ScriptService : Service() {
             OverlayService.instance?.setTarget(0f, 0f, false)
         }
 
+        /** Starts the engine in non-root mode (accessibility input only, no memory). */
+        fun startNonRootScript(context: Context, game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int): Boolean {
+            val svc = instance
+            if (svc == null) {
+                lastError = "Script service is not running yet."
+                Log.e("ScriptService", "not started")
+                return false
+            }
+            val ok = svc.runner.startNonRoot(game, script, screenW, screenH)
+            if (!ok) {
+                lastError = svc.runner.lastError
+            } else {
+                lastError = ""
+            }
+            return ok
+        }
+
         fun isRunning(): Boolean = instance?.runner?.isRunning() ?: false
 
         fun status(): String = instance?.runner?.status() ?: "stopped"

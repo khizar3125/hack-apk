@@ -1,8 +1,10 @@
 package com.aimbot.runner
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.BaseAdapter
+import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +23,9 @@ import androidx.core.content.ContextCompat
 import com.aimbot.runner.databinding.ActivityMainBinding
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
+import com.aimbot.runner.root.ScreenCaptureService
 import com.aimbot.runner.script.ScriptRunner
+import com.aimbot.runner.scanner.AutoConfigActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,6 +37,15 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var statusRunnable: Runnable? = null
 
+    /** True = memory-based scripts (requires root). False = accessibility only (no root). */
+    private var nonRootMode: Boolean = false
+
+    /** Request codes. */
+    private val RC_OVERLAY = 1001
+    private val RC_ACCESSIBILITY = 1002
+    private val RC_MEDIA_PROJECTION = 1003
+    private val RC_PERMS = 1004
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -42,14 +56,40 @@ class MainActivity : AppCompatActivity() {
 
         requestRuntimePermissions()
 
+        // Root / non-root mode toggle.
+        binding.switchNonRoot.setOnCheckedChangeListener { _, isChecked ->
+            nonRootMode = isChecked
+            binding.tvModeNote.text = if (isChecked) {
+                "Non-root mode: memory features disabled. Auto-tap / auto-fire / auto-play work via AccessibilityService."
+            } else {
+                "Root mode: memory read/write enabled. Root access required."
+            }
+            binding.tvModeNote.setTextColor(
+                ContextCompat.getColor(this, if (isChecked) R.color.warning else R.color.success)
+            )
+        }
+
         binding.btnRefresh.setOnClickListener {
             games = runner.loadGames()
             bindGameList()
             binding.tvStatus.text = "Loaded ${games.size} games"
         }
 
+        binding.btnAutoConfig.setOnClickListener {
+            val intent = Intent(this, AutoConfigActivity::class.java)
+            startActivity(intent)
+        }
+
         binding.btnStartFloating.setOnClickListener {
             startFloatingIcon()
+        }
+
+        binding.btnRequestAccessibility.setOnClickListener {
+            openAccessibilitySettings()
+        }
+
+        binding.btnRequestCapture.setOnClickListener {
+            requestMediaProjection()
         }
 
         binding.btnRun.setOnClickListener {
@@ -72,27 +112,44 @@ class MainActivity : AppCompatActivity() {
             val w = dm.widthPixels
             val h = dm.heightPixels
 
-            // The engine lives in ScriptService so it keeps running while the
-            // user is inside the game.
-            ensureScriptService()
-
-            val started = ScriptService.startScript(this, game, script, w, h)
-            if (started) {
-                updateRunButton(true)
-                binding.tvStatus.text = "Running: ${script.name}"
-                startStatusPoll()
+            if (nonRootMode) {
+                startNonRoot(game, script, w, h)
             } else {
-                updateRunButton(false)
-                binding.tvStatus.text = "Start failed - is ${game.name} running?"
-                Toast.makeText(
-                    this,
-                    "${game.name} is not running, or its module is not loaded.",
-                    Toast.LENGTH_LONG
-                ).show()
+                ensureScriptService()
+                val started = ScriptService.startScript(this, game, script, w, h)
+                if (started) {
+                    updateRunButton(true)
+                    binding.tvStatus.text = "Running: ${script.name}"
+                    startStatusPoll()
+                } else {
+                    updateRunButton(false)
+                    binding.tvStatus.text = "Start failed - root or game not running?"
+                    Toast.makeText(
+                        this,
+                        "${game.name} is not running, or root is not granted.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
 
         bindGameList()
+    }
+
+    /** Start script in non-root mode (accessibility input only, no memory). */
+    private fun startNonRoot(game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int) {
+        // Need AccessibilityService enabled for non-root input.
+        val am = getSystemService(android.content.Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+        if (!am.isEnabled) {
+            binding.tvStatus.text = "AccessibilityService not enabled for non-root mode"
+            Toast.makeText(this, "Enable AccessibilityService for Runner first", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        ScriptService.startNonRootScript(this, game, script, screenW, screenH)
+        updateRunButton(true)
+        binding.tvStatus.text = "Running (non-root): ${script.name}"
+        startStatusPoll()
     }
 
     private fun requestRuntimePermissions() {
@@ -104,19 +161,50 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, missing.toTypedArray(), 1001)
+            ActivityCompat.requestPermissions(this, missing.toTypedArray(), RC_PERMS)
         }
         ensureOverlayPermission()
     }
 
-    /** SYSTEM_ALERT_WINDOW is a special app-op, not a runtime permission. */
     private fun ensureOverlayPermission() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 android.net.Uri.parse("package:$packageName")
             )
-            startActivity(intent)
+            startActivityForResult(intent, RC_OVERLAY)
+        }
+    }
+
+    private fun openAccessibilitySettings() {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        startActivity(intent)
+    }
+
+    private fun requestMediaProjection() {
+        val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val intent = mgr.createScreenCaptureIntent()
+        startActivityForResult(intent, RC_MEDIA_PROJECTION)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == RC_MEDIA_PROJECTION) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                val svc = ScreenCaptureService() // not used directly; start via intent
+                val intent = Intent(this, com.aimbot.runner.root.ScreenCaptureService::class.java)
+                // Pass result via a static holder so the service can pick it up.
+                com.aimbot.runner.root.ScreenCaptureHolder.resultCode = resultCode
+                com.aimbot.runner.root.ScreenCaptureHolder.resultData = data
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+                binding.tvStatus.text = "Screen capture started (non-root ESP source)"
+            } else {
+                binding.tvStatus.text = "Screen capture permission denied"
+            }
         }
     }
 
@@ -156,6 +244,7 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("script_name", script.name)
         intent.putExtra("script_type", script.type)
         intent.putExtra("script_config", script.config?.toString() ?: "{}")
+        intent.putExtra("non_root_mode", nonRootMode)
         startActivity(intent)
     }
 
@@ -203,7 +292,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             startService(intent)
         }
-        // Give onCreate() a moment to publish the instance.
         val deadline = System.currentTimeMillis() + 2000
         while (ScriptService.get() == null && System.currentTimeMillis() < deadline) {
             try {
@@ -216,7 +304,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun startFloatingIcon() {
         ensureOverlayPermission()
-        // Verify overlay permission is actually granted before starting services.
         if (!Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "Overlay permission not granted", Toast.LENGTH_LONG).show()
             return
@@ -243,13 +330,12 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         stopStatusPoll()
-        // The engine belongs to ScriptService and keeps running on purpose.
     }
 
     private inner class GameAdapter(private val items: List<GameConfig>) : BaseAdapter() {
         override fun getCount(): Int = items.size
         override fun getItem(position: Int): Any = items[position]
-        override fun getItemId(position: Int): Long = position.toLong()
+        override fun getItemId(position: Long): Long = position
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val v = convertView ?: layoutInflater.inflate(R.layout.item_game, parent, false)
@@ -264,7 +350,7 @@ class MainActivity : AppCompatActivity() {
     private inner class ScriptAdapter(private val items: List<ScriptConfig>) : BaseAdapter() {
         override fun getCount(): Int = items.size
         override fun getItem(position: Int): Any = items[position]
-        override fun getItemId(position: Int): Long = position.toLong()
+        override fun getItemId(position: Long): Long = position
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val v = convertView ?: layoutInflater.inflate(R.layout.item_script, parent, false)
@@ -274,4 +360,10 @@ class MainActivity : AppCompatActivity() {
             return v
         }
     }
+}
+
+/** Holds MediaProjection result data until ScreenCaptureService reads it. */
+object ScreenCaptureHolder {
+    var resultCode: Int = Activity.RESULT_CANCELED
+    var resultData: Intent? = null
 }
