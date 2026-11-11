@@ -85,8 +85,9 @@ class MainActivity : AppCompatActivity() {
         // Root / non-root mode toggle.
         binding.switchNonRoot.setOnCheckedChangeListener { _, isChecked ->
             nonRootMode = isChecked
-            binding.tvModeNote.text = if (isChecked) {
-                "Non-root mode: memory features disabled. Auto-tap & auto-fire run via Accessibility."
+            if (isChecked) {
+                binding.tvModeNote.text = "Non-root mode: memory features disabled. Auto-tap & auto-fire run via Accessibility."
+                binding.tvModeNote.setTextColor(ContextCompat.getColor(this, R.color.warning))
                 // Start the accessibility service so non-root input injection works.
                 val svc = Intent(this, com.aimbot.runner.root.NonRootAccessibilityService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -95,11 +96,9 @@ class MainActivity : AppCompatActivity() {
                     startService(svc)
                 }
             } else {
-                "Root mode: memory read/write enabled. Root access required."
+                binding.tvModeNote.text = "Root mode: memory read/write enabled. Root access required."
+                binding.tvModeNote.setTextColor(ContextCompat.getColor(this, R.color.success))
             }
-            binding.tvModeNote.setTextColor(
-                ContextCompat.getColor(this, if (isChecked) R.color.warning else R.color.success)
-            )
         }
 
         binding.btnRefresh.setOnClickListener {

@@ -26,7 +26,6 @@ import android.widget.Toast
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
 import com.aimbot.runner.script.ScriptExecutor
-import com.aimbot.runner.script.ScriptService
 import org.json.JSONObject
 
 /**
@@ -294,7 +293,7 @@ class FloatingIconService : Service() {
         panel.addView(row)
     }
 
-    private fun togglePanel(panel: View, handle: View) {
+    private fun togglePanel(panel: View, handle: ImageView) {
         isExpanded = !isExpanded
         panel.visibility = if (isExpanded) View.VISIBLE else View.GONE
         handle.setColorFilter(
