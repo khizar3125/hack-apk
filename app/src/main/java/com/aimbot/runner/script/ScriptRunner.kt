@@ -124,14 +124,32 @@ class ScriptRunner(private val context: Context) {
             return false
         }
 
-        if (!engine.attach(game.packageName)) {
+        var attached = engine.attach(game.packageName)
+        if (!attached) {
+            val startAttach = System.currentTimeMillis()
+            while (!attached && (System.currentTimeMillis() - startAttach) < 12000L) {
+                try { Thread.sleep(500) } catch (_: InterruptedException) { break }
+                attached = engine.attach(game.packageName)
+            }
+        }
+
+        if (!attached) {
             lastError = "${game.name} is not running. Start the game first, " +
                 "then run the script."
             Log.e("ScriptRunner", lastError)
             return false
         }
 
-        if (!engine.resolveModule(game.module)) {
+        var moduleResolved = engine.resolveModule(game.module)
+        if (!moduleResolved) {
+            val startModule = System.currentTimeMillis()
+            while (!moduleResolved && (System.currentTimeMillis() - startModule) < 12000L) {
+                try { Thread.sleep(500) } catch (_: InterruptedException) { break }
+                moduleResolved = engine.resolveModule(game.module)
+            }
+        }
+
+        if (!moduleResolved) {
             lastError = "${game.module} is not loaded in ${game.name}. " +
                 "The game has to reach its main scene before scripts attach."
             Log.e("ScriptRunner", lastError)
@@ -202,10 +220,11 @@ class ScriptRunner(private val context: Context) {
         currentScript = null
     }
 
-    fun isRunning(): Boolean = running && engine.pid != 0
+    fun isRunning(): Boolean = running && (nonRootMode || engine.pid != 0)
 
     fun status(): String {
         if (!running) return "stopped"
+        if (nonRootMode) return "running (non-root mode)"
         return "pid=${engine.pid} base=0x${engine.moduleBase.toString(16)}"
     }
 

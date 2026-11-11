@@ -56,6 +56,7 @@ class ScriptService : Service() {
         }
 
         fun stopScript(context: Context) {
+            instance?.executor?.stopAll()
             instance?.runner?.stop()
             OverlayService.instance?.setTarget(0f, 0f, false)
         }
@@ -68,9 +69,9 @@ class ScriptService : Service() {
                 Log.e("ScriptService", "not started")
                 return false
             }
-            val ok = svc.runner.startNonRoot(game, script, screenW, screenH)
+            val ok = svc.executor.executeNonRoot(game, script, screenW, screenH)
             if (!ok) {
-                lastError = svc.runner.lastError
+                lastError = svc.executor.lastError
             } else {
                 lastError = ""
             }

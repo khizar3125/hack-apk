@@ -78,6 +78,30 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         return true
     }
 
+    fun executeNonRoot(game: GameConfig, script: ScriptConfig, screenW: Int, screenH: Int): Boolean {
+        val key = "${game.name}|${script.name}"
+        if (active[key] == true) return false
+
+        active.clear()
+        runner.stop()
+
+        val cfg = loadPersistedConfig(game.name, script.name, script.config)
+        val updatedScript = script.copy(config = cfg)
+
+        if (!runner.startNonRoot(game, updatedScript, screenW, screenH)) {
+            active[key] = false
+            lastError = runner.lastError
+            Log.e("ScriptExecutor", "startNonRoot failed: $lastError")
+            return false
+        }
+
+        lastError = ""
+        active[key] = true
+        dispatch(key, game, updatedScript, cfg, screenW, screenH)
+        Log.i("ScriptExecutor", "started non-root ${updatedScript.type} for ${game.name}")
+        return true
+    }
+
     private fun dispatch(
         key: String,
         game: GameConfig,
@@ -176,6 +200,15 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         OverlayService.instance?.setTargets(emptyList())
         OverlayService.instance?.setTarget(0f, 0f, false)
         Log.i("ScriptExecutor", "stopped ${script.type} for ${game.name}")
+    }
+
+    fun stopAll() {
+        active.clear()
+        runner.stop()
+        engine.detach()
+        OverlayService.instance?.setTargets(emptyList())
+        OverlayService.instance?.setTarget(0f, 0f, false)
+        Log.i("ScriptExecutor", "stopped all active scripts")
     }
 
     fun isActive(script: ScriptConfig, game: GameConfig): Boolean {
@@ -408,7 +441,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
                     break
                 } catch (e: Exception) {
                     Log.e("ScriptExecutor", "non-root auto-tap error", e)
-                    break
+                    try { Thread.sleep(500) } catch (_: InterruptedException) { break }
                 }
             }
         }
@@ -430,7 +463,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
                     break
                 } catch (e: Exception) {
                     Log.e("ScriptExecutor", "non-root auto-fire error", e)
-                    break
+                    try { Thread.sleep(500) } catch (_: InterruptedException) { break }
                 }
             }
         }
@@ -474,7 +507,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
                     break
                 } catch (e: Exception) {
                     Log.e("ScriptExecutor", "non-root auto-play error", e)
-                    break
+                    try { Thread.sleep(500) } catch (_: InterruptedException) { break }
                 }
             }
         }

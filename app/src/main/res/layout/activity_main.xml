@@ -4,19 +4,20 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_gradient"
-    android:padding="16dp">
+    android:padding="12dp">
 
-    <!-- Header -->
+    <!-- Top App Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:paddingBottom="6dp">
 
         <ImageView
             android:id="@+id/img_logo"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:src="@drawable/ic_logo"
             android:contentDescription="@string/app_name" />
 
@@ -25,295 +26,329 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="14dp">
+            android:layout_marginStart="12dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/app_name"
+                android:text="SCRIPT RUNNER PRO"
                 android:textColor="@color/accent"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/subtitle"
+                android:text="Auto-launch · Root &amp; Non-Root · Native Overlay"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btn_refresh"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/btn_refresh"
+            android:layout_height="36dp"
+            android:text="⟳ Refresh"
             android:textColor="@color/bg_dark"
             android:backgroundTint="@color/accent"
+            android:textSize="11sp"
+            android:textStyle="bold"
             android:minWidth="0dp"
             android:minHeight="0dp"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp" />
     </LinearLayout>
 
-    <!-- Mode toggle: root vs non-root -->
+    <!-- Hero Card: Active Game & Script Details -->
+    <LinearLayout
+        android:id="@+id/card_hero"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card"
+        android:padding="12dp"
+        android:layout_marginTop="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_selected_game"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/no_game"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- Game install status badge in Hero card -->
+            <TextView
+                android:id="@+id/tv_game_install_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_not_installed"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:text="Select Game"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/tv_selected_script"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/no_script"
+                android:textColor="@color/accent"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_stat_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STANDBY"
+                android:textColor="@color/warning"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Hidden counters preserved for binding compatibility -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone">
+            <TextView android:id="@+id/tv_stat_games" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+            <TextView android:id="@+id/tv_stat_scripts" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Mode Toggle: Root vs Non-Root Card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="14dp"
+        android:gravity="center_vertical"
         android:background="@drawable/bg_card"
-        android:padding="12dp">
+        android:padding="8dp"
+        android:layout_marginTop="6dp">
 
         <Switch
             android:id="@+id/switch_non_root"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/label_non_root"
+            android:text="Non-Root"
             android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_mode_note"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="8dp"
             android:text="@string/note_root_mode"
             android:textColor="@color/success"
-            android:textSize="12sp" />
+            android:textSize="11sp"
+            android:maxLines="2"
+            android:ellipsize="end" />
     </LinearLayout>
 
-    <!-- Permission row -->
+    <!-- Quick Permission Toolbar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp">
+        android:layout_marginTop="6dp">
 
         <Button
             android:id="@+id/btn_request_accessibility"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            android:text="@string/btn_accessibility"
+            android:text="♿ Accessibility"
             android:textColor="@color/bg_dark"
             android:backgroundTint="@color/accent"
-            android:textSize="12sp"
-            android:layout_marginEnd="6dp" />
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:minHeight="0dp"
+            android:layout_marginEnd="4dp" />
 
         <Button
             android:id="@+id/btn_request_capture"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
-            android:text="@string/btn_capture"
+            android:text="📸 Screen Capture"
             android:textColor="@color/bg_dark"
             android:backgroundTint="@color/warning"
-            android:textSize="12sp"
-            android:layout_marginStart="6dp" />
-    </LinearLayout>
-
-    <!-- Stats row -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="16dp">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_card"
-            android:padding="12dp"
-            android:layout_marginEnd="6dp">
-
-            <TextView
-                android:id="@+id/tv_stat_games"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/accent"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/stat_games"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_card"
-            android:padding="12dp"
-            android:layout_marginStart="3dp"
-            android:layout_marginEnd="3dp">
-
-            <TextView
-                android:id="@+id/tv_stat_scripts"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/accent"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/stat_scripts"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_card"
-            android:padding="12dp"
-            android:layout_marginStart="6dp">
-
-            <TextView
-                android:id="@+id/tv_stat_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="—"
-                android:textColor="@color/warning"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/stat_status"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- Selected game -->
-    <TextView
-        android:id="@+id/tv_selected_game"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/no_game"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:layout_marginTop="16dp" />
-
-    <ListView
-        android:id="@+id/list_games"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:divider="@null"
-        android:dividerHeight="0dp"
-        android:listSelector="@android:color/transparent"
-        android:layout_marginTop="8dp" />
-
-    <!-- Selected script -->
-    <TextView
-        android:id="@+id/tv_selected_script"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/no_script"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:layout_marginTop="12dp" />
-
-    <ListView
-        android:id="@+id/list_scripts"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:divider="@null"
-        android:dividerHeight="0dp"
-        android:listSelector="@android:color/transparent"
-        android:layout_marginTop="8dp" />
-
-    <!-- Actions -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="12dp">
-
-        <Button
-            android:id="@+id/btn_run"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/btn_run"
-            android:textColor="@color/bg_dark"
-            android:backgroundTint="@color/success"
-            android:textSize="18sp"
+            android:textSize="11sp"
             android:textStyle="bold"
-            android:layout_marginEnd="6dp" />
+            android:minHeight="0dp"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <!-- Tab Selector: Games vs Scripts -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
 
         <Button
-            android:id="@+id/btn_auto_config"
+            android:id="@+id/btn_tab_games"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_weight="1"
-            android:text="@string/btn_auto_config"
-            android:textColor="@color/bg_dark"
-            android:backgroundTint="@color/warning"
-            android:textSize="13sp"
-            android:layout_marginStart="6dp" />
-
-        <Button
-            android:id="@+id/btn_start_floating"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/btn_floating"
+            android:text="🎮 Available Games"
             android:textColor="@color/bg_dark"
             android:backgroundTint="@color/accent"
-            android:textSize="15sp"
-            android:layout_marginStart="6dp" />
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:minHeight="0dp"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_tab_scripts"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="⚡ Game Scripts"
+            android:textColor="@color/text_secondary"
+            android:backgroundTint="@color/bg_card"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:minHeight="0dp"
+            android:layout_marginStart="4dp" />
     </LinearLayout>
 
-    <!-- Status -->
-    <TextView
-        android:id="@+id/tv_status"
+    <!-- Main List Container (Only active tab is visible, giving full height!) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp">
+
+        <ListView
+            android:id="@+id/list_games"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:listSelector="@android:color/transparent"
+            android:visibility="visible" />
+
+        <ListView
+            android:id="@+id/list_scripts"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:listSelector="@android:color/transparent"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- Bottom Action Dock -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/status_stopped"
-        android:textColor="@color/accent"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginTop="12dp" />
+        android:orientation="vertical"
+        android:background="@drawable/bg_card"
+        android:padding="10dp"
+        android:layout_marginTop="6dp">
 
-    <!-- Log -->
-    <TextView
-        android:id="@+id/log"
-        android:layout_width="match_parent"
-        android:layout_height="72dp"
-        android:text=""
-        android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:fontFamily="monospace"
-        android:scrollbars="vertical"
-        android:padding="8dp"
-        android:background="@color/bg_card"
-        android:layout_marginTop="10dp" />
+        <!-- Big Launch & Run Button -->
+        <Button
+            android:id="@+id/btn_run"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="🚀 LAUNCH GAME &amp; RUN"
+            android:textColor="@color/bg_dark"
+            android:backgroundTint="@color/success"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:minHeight="0dp" />
+
+        <!-- Secondary Controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <Button
+                android:id="@+id/btn_start_floating"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="🎯 Floating Menu"
+                android:textColor="@color/bg_dark"
+                android:backgroundTint="@color/accent"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:minHeight="0dp"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_auto_config"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="⚙️ Auto Config"
+                android:textColor="@color/bg_dark"
+                android:backgroundTint="@color/warning"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:minHeight="0dp"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Status Ticker -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ready · Select game and tap Launch &amp; Run"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="6dp" />
+
+        <!-- Activity Log Console -->
+        <TextView
+            android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:text=""
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:scrollbars="vertical"
+            android:padding="4dp"
+            android:background="@color/bg_surface"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
 
 </LinearLayout>

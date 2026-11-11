@@ -30,4 +30,12 @@
     <string name="btn_capture">Screen Capture</string>
     <string name="perm_accessibility_note">Enable AccessibilityService for Runner in Settings to use non-root input.</string>
     <string name="perm_capture_note">Grant screen capture permission for non-root ESP overlay.</string>
+    <string name="tab_games">🎮 Games</string>
+    <string name="tab_scripts">⚡ Scripts</string>
+    <string name="btn_launch_run">🚀 Launch &amp; Run</string>
+    <string name="btn_stop_script">🛑 Stop Script</string>
+    <string name="installed">● Installed</string>
+    <string name="not_installed">○ Not Installed</string>
+    <string name="dialog_not_installed_title">Game Not Installed</string>
+    <string name="dialog_not_installed_msg">The selected game (%1$s) is not installed on this mobile device.\n\nPackage: %2$s\n\nPlease install the game first.</string>
 </resources>

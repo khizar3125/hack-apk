@@ -77,29 +77,40 @@ object NonRootInputInjector {
     }
 
     private fun drain() {
-        if (!enabled) return
-        val svc = service ?: return
+        val svc = service ?: NonRootAccessibilityService.instance
+        if (svc != null) {
+            service = svc
+            enabled = true
+        }
+        if (!enabled || service == null) return
+        val activeSvc = service ?: return
 
         // Drain taps
         while (true) {
-            val t = tapQueue.poll()
-            if (t == null) break
-            performTap(svc, t[0], t[1])
+            val t = tapQueue.poll() ?: break
+            try {
+                performTap(activeSvc, t[0], t[1])
+            } catch (e: Exception) {
+                Log.e(TAG, "performTap error", e)
+            }
         }
 
         // Drain swipes
         while (true) {
-            val s = swipeQueue.poll()
-            if (s == null) break
-            performSwipe(svc, s[0], s[1], s[2], s[3], s[4].toLong())
+            val s = swipeQueue.poll() ?: break
+            try {
+                performSwipe(activeSvc, s[0], s[1], s[2], s[3], s[4].toLong())
+            } catch (e: Exception) {
+                Log.e(TAG, "performSwipe error", e)
+            }
         }
     }
 
     private fun performTap(svc: AccessibilityService, x: Float, y: Float) {
         val path = Path()
-        path.moveTo(x, y)
+        path.moveTo(x.coerceAtLeast(0f), y.coerceAtLeast(0f))
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 80))
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             svc.dispatchGesture(gesture, null, null)
@@ -108,9 +119,9 @@ object NonRootInputInjector {
 
     private fun performSwipe(svc: AccessibilityService, x1: Float, y1: Float, x2: Float, y2: Float, ms: Long) {
         val path = Path()
-        path.moveTo(x1, y1)
-        path.lineTo(x2, y2)
-        val duration = ms.coerceAtLeast(1)
+        path.moveTo(x1.coerceAtLeast(0f), y1.coerceAtLeast(0f))
+        path.lineTo(x2.coerceAtLeast(0f), y2.coerceAtLeast(0f))
+        val duration = ms.coerceIn(10L, 5000L)
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
             .build()

@@ -1,14 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg_dark">#0b0c10</color>
-    <color name="bg_panel">#1f2833</color>
-    <color name="bg_card">#16213e</color>
-    <color name="bg_card_pressed">#1f2833</color>
-    <color name="accent">#66fcf1</color>
-    <color name="accent_2">#45a29e</color>
-    <color name="danger">#ff4444</color>
-    <color name="success">#00ff88</color>
-    <color name="warning">#ffcc00</color>
-    <color name="text_primary">#ffffff</color>
-    <color name="text_secondary">#9aa5b1</color>
+    <color name="bg_dark">#090C10</color>
+    <color name="bg_panel">#131B26</color>
+    <color name="bg_card">#15202B</color>
+    <color name="bg_card_pressed">#1F2E3E</color>
+    <color name="bg_surface">#101721</color>
+    <color name="bg_elevated">#1A2533</color>
+    <color name="accent">#00F0FF</color>
+    <color name="accent_2">#00B4D8</color>
+    <color name="accent_glow">#3300F0FF</color>
+    <color name="danger">#FF3B30</color>
+    <color name="danger_glow">#33FF3B30</color>
+    <color name="success">#00E676</color>
+    <color name="success_glow">#3300E676</color>
+    <color name="warning">#FFB300</color>
+    <color name="text_primary">#F0F6FC</color>
+    <color name="text_secondary">#8B949E</color>
+    <color name="text_muted">#586069</color>
+    <color name="border_subtle">#253342</color>
+    <color name="border_active">#00F0FF</color>
+    <color name="installed_green">#00E676</color>
+    <color name="installed_bg">#2000E676</color>
+    <color name="not_installed_text">#8B949E</color>
+    <color name="not_installed_bg">#188B949E</color>
 </resources>
