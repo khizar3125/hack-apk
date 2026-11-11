@@ -3,6 +3,7 @@ package com.aimbot.runner.script
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.aimbot.runner.FeatureController
 import com.aimbot.runner.OverlayService
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
@@ -110,37 +111,39 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         screenW: Int,
         screenH: Int
     ) {
+        val scriptName = script.name
+
         // Non-root mode: only accessibility-based features work.
         if (runner.nonRootMode) {
             when (script.type.lowercase()) {
                 "aimbot" -> startNonRootUnavailable(key, "Aimbot")
                 "esp" -> startNonRootUnavailable(key, "ESP")
-                "misc" -> startNonRootMisc(key, cfg, screenW, screenH)
+                "misc" -> startNonRootMisc(key, game, scriptName, cfg, screenW, screenH)
                 else -> Log.w("ScriptExecutor", "unknown script type: ${script.type}")
             }
             return
         }
 
         when (script.type.lowercase()) {
-            "aimbot" -> startAimbot(key, game, cfg, screenW, screenH)
-            "esp" -> startEsp(key, game, cfg, screenW, screenH)
-            "misc" -> startMisc(key, game, cfg, screenW, screenH)
+            "aimbot" -> startAimbot(key, game, scriptName, cfg, screenW, screenH)
+            "esp" -> startEsp(key, game, scriptName, cfg, screenW, screenH)
+            "misc" -> startMisc(key, game, scriptName, cfg, screenW, screenH)
             else -> Log.w("ScriptExecutor", "unknown script type: ${script.type}")
         }
     }
 
     /** Non-root misc: only accessibility-based features run; memory features are skipped. */
-    private fun startNonRootMisc(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startNonRootMisc(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         var started = 0
 
         if (cfg.flagOn("autoTap")) {
-            startNonRootAutoTap(key, cfg, screenW, screenH); started++
+            startNonRootAutoTap(key, game, script, cfg, screenW, screenH); started++
         }
         if (cfg.flagOn("autoFire")) {
-            startNonRootAutoFire(key, cfg, screenW, screenH); started++
+            startNonRootAutoFire(key, game, script, cfg, screenW, screenH); started++
         }
         if (cfg.flagOn("autoPlay")) {
-            startNonRootAutoPlay(key, cfg, screenW, screenH); started++
+            startNonRootAutoPlay(key, cfg, screenW, screenH, game, script); started++
         }
 
         // Memory-based features are silently skipped in non-root mode.
@@ -161,34 +164,34 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
      * config starts its own loop, so a single script with
      * {"fly":true,"speed":2.0} runs all enabled loops.
      */
-    private fun startMisc(key: String, game: GameConfig, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startMisc(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         var started = 0
 
         if (cfg.flagOn("fly")) {
-            startFly(key, game, cfg); started++
+            startFly(key, game, script, cfg); started++
         }
         if (cfg.flagOn("speed") || cfg.flagOn("multiplier2x")) {
-            startSpeed(key, game, cfg); started++
+            startSpeed(key, game, script, cfg); started++
         }
         if (cfg.flagOn("nocrecoil") || cfg.optDouble("recoilScale", 1.0) <= 0.0) {
-            startNoRecoil(key, game, cfg); started++
+            startNoRecoil(key, game, script, cfg); started++
         }
         if (cfg.flagOn("coinMagnet")) {
-            startCoinMagnet(key, game, cfg); started++
+            startCoinMagnet(key, game, script, cfg); started++
         }
         if (cfg.flagOn("xray") || cfg.flagOn("fullbright")) {
-            startXray(key, game, cfg); started++
+            startXray(key, game, script, cfg); started++
         }
         if (cfg.flagOn("autoPlay")) {
-            startAutoPlay(key, cfg, screenW, screenH); started++
+            startAutoPlay(key, cfg, screenW, screenH, game, script); started++
         }
         if (cfg.flagOn("rapidFire")) {
-            startRapidFire(key, game, cfg); started++
+            startRapidFire(key, game, script, cfg); started++
         }
 
         if (started == 0) {
             Log.w("ScriptExecutor", "misc script matched no known feature flag")
-            startGeneric(key)
+            startGeneric(key, game, script)
         }
     }
 
@@ -221,7 +224,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
      * ESP loop: reads the entity list every tick and pushes the projected
      * positions to the overlay.
      */
-    private fun startEsp(key: String, game: GameConfig, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startEsp(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         applyOffsets(game, cfg)
         val thread = Thread {
             val fov = cfg.optDouble("fov", 90.0).toFloat()
@@ -230,6 +233,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             engine.aimFov = aimFov
 
             while (active[key] == true && !Thread.interrupted()) {
+                if (!FeatureController.isOn(game.name, script, "esp")) break
                 try {
                     val targets = engine.collectTargets(screenW, screenH)
                     OverlayService.instance?.setTargets(targets)
@@ -252,7 +256,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
      * touch pointer toward it. Smoothing controls how much of the gap is
      * closed per tick.
      */
-    private fun startAimbot(key: String, game: GameConfig, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startAimbot(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         applyOffsets(game, cfg)
         val thread = Thread {
             val fov = cfg.optDouble("fov", 90.0).toFloat()
@@ -268,6 +272,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
             var currentY = screenH / 2f
 
             while (active[key] == true && !Thread.interrupted()) {
+                if (!FeatureController.isOn(game.name, script, "aimbot")) break
                 try {
                     val targets = engine.collectTargets(screenW, screenH)
                     OverlayService.instance?.setTargets(targets)
@@ -322,14 +327,13 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         game.offsets?.optLong(key, 0L) ?: 0L
 
     /**
-     * Runs a daemon loop until the script is stopped. Every feature writes to
-     * a per-game address from games.json; when the address is 0 (not dumped
-     * for that game version) the loop is a safe no-op instead of corrupting
-     * memory.
+     * Runs a daemon loop until the script is stopped. [shouldContinue] is
+     * checked every iteration — when it returns false the loop exits
+     * immediately (used for FeatureController ON/OFF toggles).
      */
-    private fun loop(key: String, delayMs: Long, block: () -> Unit) {
+    private fun loop(key: String, delayMs: Long, shouldContinue: () -> Boolean, block: () -> Unit) {
         val thread = Thread {
-            while (active[key] == true && !Thread.interrupted()) {
+            while (active[key] == true && !Thread.interrupted() && shouldContinue()) {
                 try {
                     block()
                 } catch (e: InterruptedException) {
@@ -349,52 +353,53 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         thread.start()
     }
 
-    private fun startFly(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startFly(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val addr = offs(game, "flyAddr")
-        loop(key, 60) {
+        loop(key, 60, { FeatureController.isOn(game.name, script, "fly") }) {
             if (addr != 0L) engine.writeInt(engine.moduleBase + addr, 1)
         }
     }
 
-    private fun startSpeed(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startSpeed(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val addr = offs(game, "speedAddr")
         val mult = cfg.optDouble("speed", 2.0).toFloat()
-        loop(key, 60) {
+        loop(key, 60, { FeatureController.isOn(game.name, script, "speed") }) {
             if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, mult)
         }
     }
 
-    private fun startNoRecoil(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startNoRecoil(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val addr = offs(game, "recoilAddr")
         val scale = cfg.optDouble("recoilScale", 0.0).toFloat()
-        loop(key, 60) {
+        loop(key, 60, { FeatureController.isOn(game.name, script, "nocrecoil") }) {
             if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, scale)
         }
     }
 
-    private fun startCoinMagnet(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startCoinMagnet(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val addr = offs(game, "magnetAddr")
         val radius = cfg.optDouble("coinMagnetRadius", 1200.0).toFloat()
-        loop(key, 80) {
+        loop(key, 80, { FeatureController.isOn(game.name, script, "coinMagnet") }) {
             if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, radius)
         }
     }
 
-    private fun startXray(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startXray(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val render = offs(game, "renderAddr")
         val bright = offs(game, "brightAddr")
-        loop(key, 80) {
+        loop(key, 80, { FeatureController.isOn(game.name, script, "xray") }) {
             if (render != 0L) engine.writeInt(engine.moduleBase + render, 1)
             if (bright != 0L) engine.writeInt(engine.moduleBase + bright, 15)
         }
     }
 
     /** Tap-based automation: repeatedly taps configured screen points. */
-    private fun startAutoPlay(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startAutoPlay(key: String, cfg: JSONObject, screenW: Int, screenH: Int, game: GameConfig, script: String) {
         val taps = cfg.optJSONArray("tapPoints")
-        loop(key, 400) {
+        loop(key, 400, { FeatureController.isOn(game.name, script, "autoPlay") }) {
             if (taps != null) {
                 for (i in 0 until taps.length()) {
+                    if (!FeatureController.isOn(game.name, script, "autoPlay")) break
                     val p = taps.getJSONObject(i)
                     InputWriter.tap(
                         screenW, screenH,
@@ -407,29 +412,31 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
         }
     }
 
-    private fun startRapidFire(key: String, game: GameConfig, cfg: JSONObject) {
+    private fun startRapidFire(key: String, game: GameConfig, script: String, cfg: JSONObject) {
         val addr = offs(game, "fireRateAddr")
         val rate = cfg.optDouble("rapidFireRate", 0.05).toFloat()
-        loop(key, 60) {
+        loop(key, 60, { FeatureController.isOn(game.name, script, "rapidFire") }) {
             if (addr != 0L) engine.writeFloat(engine.moduleBase + addr, rate)
         }
     }
 
     /** Fallback for misc scripts with no recognised flag: keep the engine alive. */
-    private fun startGeneric(key: String) {
-        loop(key, 200) { }
+    private fun startGeneric(key: String, game: GameConfig, script: String) {
+        loop(key, 200, { FeatureController.isOn(game.name, script, "generic") }) { }
     }
 
     /* ---------- non-root feature loops (AccessibilityService gestures) ---------- */
 
     /** Repeatedly taps configured screen points using AccessibilityService (no root). */
-    private fun startNonRootAutoTap(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startNonRootAutoTap(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         val taps = cfg.optJSONArray("tapPoints")
         if (taps == null) return
         val thread = Thread {
             while (active[key] == true && !Thread.interrupted()) {
+                if (!FeatureController.isOn(game.name, script, "autoTap")) break
                 try {
                     for (i in 0 until taps.length()) {
+                        if (!FeatureController.isOn(game.name, script, "autoTap")) break
                         if (active[key] != true) break
                         val p = taps.getJSONObject(i)
                         val x = p.optDouble("x", 0.0).toFloat()
@@ -450,12 +457,13 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
     }
 
     /** Auto-fire: taps a fire button point repeatedly (no root). */
-    private fun startNonRootAutoFire(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startNonRootAutoFire(key: String, game: GameConfig, script: String, cfg: JSONObject, screenW: Int, screenH: Int) {
         val x = cfg.optDouble("fireX", screenW * 0.9).toFloat()
         val y = cfg.optDouble("fireY", screenH * 0.9).toFloat()
         val interval = cfg.optLong("fireInterval", 200)
         val thread = Thread {
             while (active[key] == true && !Thread.interrupted()) {
+                if (!FeatureController.isOn(game.name, script, "autoFire")) break
                 try {
                     NonRootInputInjector.tap(x, y)
                     Thread.sleep(interval.coerceAtLeast(50))
@@ -472,14 +480,16 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
     }
 
     /** Auto-play loop: tap + swipe sequence using AccessibilityService (no root). */
-    private fun startNonRootAutoPlay(key: String, cfg: JSONObject, screenW: Int, screenH: Int) {
+    private fun startNonRootAutoPlay(key: String, cfg: JSONObject, screenW: Int, screenH: Int, game: GameConfig, script: String) {
         val taps = cfg.optJSONArray("tapPoints")
         val swipes = cfg.optJSONArray("swipePoints")
         val thread = Thread {
             while (active[key] == true && !Thread.interrupted()) {
+                if (!FeatureController.isOn(game.name, script, "autoPlay")) break
                 try {
                     if (taps != null) {
                         for (i in 0 until taps.length()) {
+                            if (!FeatureController.isOn(game.name, script, "autoPlay")) break
                             if (active[key] != true) break
                             val p = taps.getJSONObject(i)
                             NonRootInputInjector.tap(
@@ -491,6 +501,7 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
                     }
                     if (swipes != null) {
                         for (i in 0 until swipes.length()) {
+                            if (!FeatureController.isOn(game.name, script, "autoPlay")) break
                             if (active[key] != true) break
                             val p = swipes.getJSONObject(i)
                             NonRootInputInjector.swipe(

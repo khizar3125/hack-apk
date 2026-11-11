@@ -60,6 +60,9 @@ class MainActivity : AppCompatActivity() {
         runner = ScriptRunner(this)
         games = runner.loadGames()
 
+        // Initialize feature toggle state (persisted across restarts)
+        FeatureController.init(this)
+
         // Pre-start ScriptService so it's ready when user runs scripts
         startScriptServiceDirectly()
 
@@ -84,6 +87,13 @@ class MainActivity : AppCompatActivity() {
             nonRootMode = isChecked
             binding.tvModeNote.text = if (isChecked) {
                 "Non-root mode: memory features disabled. Auto-tap & auto-fire run via Accessibility."
+                // Start the accessibility service so non-root input injection works.
+                val svc = Intent(this, com.aimbot.runner.root.NonRootAccessibilityService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(svc)
+                } else {
+                    startService(svc)
+                }
             } else {
                 "Root mode: memory read/write enabled. Root access required."
             }
@@ -107,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnStartFloating.setOnClickListener {
-            startFloatingIcon(silent = false)
+            startFloatingIcon(silent = false, game = selectedGame, script = selectedScript)
         }
 
         binding.btnRequestAccessibility.setOnClickListener {
@@ -212,7 +222,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // STEP 3: Auto-start Floating Menu Overlay so controls are available over the game!
-        startFloatingIcon(silent = true)
+        startFloatingIcon(silent = true, game = game, script = script)
 
         // STEP 4: Start script engine with auto-attach retry logic
         val dm = DisplayMetrics()
@@ -428,7 +438,7 @@ class MainActivity : AppCompatActivity() {
         handler.postDelayed(poll, 100)
     }
 
-    private fun startFloatingIcon(silent: Boolean = false) {
+    private fun startFloatingIcon(silent: Boolean = false, game: GameConfig? = null, script: ScriptConfig? = null) {
         ensureOverlayPermission()
         if (!Settings.canDrawOverlays(this)) {
             if (!silent) {
@@ -438,6 +448,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         val icon = Intent(this, FloatingIconService::class.java).setAction("SHOW")
+        icon.putExtra("game_name", game?.name ?: "")
+        icon.putExtra("game_package", game?.packageName ?: "")
+        icon.putExtra("game_module", game?.module ?: "")
+        icon.putExtra("script_name", script?.name ?: "")
+        icon.putExtra("script_type", script?.type ?: "")
+
         val overlay = Intent(this, OverlayService::class.java).setAction("SHOW")
 
         try {
