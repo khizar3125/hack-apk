@@ -55,10 +55,11 @@ class PatternScanner(private val pid: Int, private val moduleBase: Long, private
         var offset = 0L
         while (offset + sigLen <= moduleSize) {
             val addr = moduleBase + offset
-            val data = RootAccess.readMemory(pid, addr, block.toInt()) ?: {
+            val data = RootAccess.readMemory(pid, addr, block.toInt())
+            if (data == null) {
                 offset += block
-                return@while
-            }()
+                continue
+            }
 
             var i = 0
             while (i + sigLen <= data.size) {

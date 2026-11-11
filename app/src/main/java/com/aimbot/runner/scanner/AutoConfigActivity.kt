@@ -75,8 +75,9 @@ class AutoConfigActivity : AppCompatActivity() {
         tvResults = findViewById(R.id.tvResults)
 
         val names = games.map { it.name }
-        spinnerGame.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, names)
-        spinnerGame.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        val spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, names)
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerGame.adapter = spinnerAdapter
         spinnerGame.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p0: android.widget.AdapterView<*>?, p1: View?, position: Int, id: Long) {
                 selectedGame = games[position]

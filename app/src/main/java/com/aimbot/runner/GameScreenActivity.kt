@@ -174,10 +174,11 @@ class GameScreenActivity : AppCompatActivity() {
             setTextColor(0xFFFFFFFF.toInt())
             layoutParams = LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.WRAP_CONTENT)
         }
+        val steps = ((max - min) * 10).toInt().coerceAtLeast(1)
         val sb = SeekBar(this).apply {
             tag = key
-            max = ((max - min) * 10).toInt().coerceAtLeast(1)
-            progress = (((value - min) * 10).toInt()).coerceIn(0, max)
+            this.max = steps
+            progress = (((value - min) * 10).toInt()).coerceIn(0, steps)
             layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
             )

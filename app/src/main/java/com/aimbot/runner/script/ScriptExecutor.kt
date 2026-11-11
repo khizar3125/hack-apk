@@ -8,6 +8,7 @@ import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
 import com.aimbot.runner.root.InputWriter
 import com.aimbot.runner.root.MemoryEngine
+import com.aimbot.runner.root.NonRootInputInjector
 import com.aimbot.runner.root.RootAccess
 import org.json.JSONObject
 
@@ -462,8 +463,8 @@ class ScriptExecutor(private val context: Context, private val runner: ScriptRun
                             NonRootInputInjector.swipe(
                                 p.optDouble("x1", 0.0).toFloat(),
                                 p.optDouble("y1", 0.0).toFloat(),
-                                p.optDouble("x2", screenW.toFloat()).toFloat(),
-                                p.optDouble("y2", screenH.toFloat()).toFloat(),
+                                p.optDouble("x2", screenW.toDouble()).toFloat(),
+                                p.optDouble("y2", screenH.toDouble()).toFloat(),
                                 400
                             )
                             Thread.sleep(200)

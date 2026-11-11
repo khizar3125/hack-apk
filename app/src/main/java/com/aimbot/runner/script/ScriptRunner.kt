@@ -5,6 +5,7 @@ import android.util.Log
 import com.aimbot.runner.model.GameConfig
 import com.aimbot.runner.model.ScriptConfig
 import com.aimbot.runner.root.MemoryEngine
+import com.aimbot.runner.root.NonRootAccessibilityService
 import com.aimbot.runner.root.NonRootInputInjector
 import com.aimbot.runner.root.RootAccess
 import org.json.JSONArray
@@ -169,9 +170,10 @@ class ScriptRunner(private val context: Context) {
         nonRootMode = true
 
         NonRootInputInjector.init(context)
-        NonRootInputInjector.bindService(
-            NonRootAccessibilityService.instance, screenW, screenH
-        )
+        val svc = NonRootAccessibilityService.instance
+        if (svc != null) {
+            NonRootInputInjector.bindService(svc, screenW, screenH)
+        }
 
         running = true
         lastError = ""

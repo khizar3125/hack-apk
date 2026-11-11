@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestMediaProjection() {
-        val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val mgr = getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val intent = mgr.createScreenCaptureIntent()
         startActivityForResult(intent, RC_MEDIA_PROJECTION)
     }
@@ -194,8 +194,8 @@ class MainActivity : AppCompatActivity() {
                 val svc = ScreenCaptureService() // not used directly; start via intent
                 val intent = Intent(this, com.aimbot.runner.root.ScreenCaptureService::class.java)
                 // Pass result via a static holder so the service can pick it up.
-                com.aimbot.runner.root.ScreenCaptureHolder.resultCode = resultCode
-                com.aimbot.runner.root.ScreenCaptureHolder.resultData = data
+                com.aimbot.runner.ScreenCaptureHolder.resultCode = resultCode
+                com.aimbot.runner.ScreenCaptureHolder.resultData = data
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     startForegroundService(intent)
                 } else {
@@ -335,7 +335,7 @@ class MainActivity : AppCompatActivity() {
     private inner class GameAdapter(private val items: List<GameConfig>) : BaseAdapter() {
         override fun getCount(): Int = items.size
         override fun getItem(position: Int): Any = items[position]
-        override fun getItemId(position: Long): Long = position
+        override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val v = convertView ?: layoutInflater.inflate(R.layout.item_game, parent, false)
@@ -350,7 +350,7 @@ class MainActivity : AppCompatActivity() {
     private inner class ScriptAdapter(private val items: List<ScriptConfig>) : BaseAdapter() {
         override fun getCount(): Int = items.size
         override fun getItem(position: Int): Any = items[position]
-        override fun getItemId(position: Long): Long = position
+        override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val v = convertView ?: layoutInflater.inflate(R.layout.item_script, parent, false)

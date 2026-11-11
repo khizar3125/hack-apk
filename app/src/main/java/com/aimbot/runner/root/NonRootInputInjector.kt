@@ -98,9 +98,8 @@ object NonRootInputInjector {
     private fun performTap(svc: AccessibilityService, x: Float, y: Float) {
         val path = Path()
         path.moveTo(x, y)
-        val stroke = floatArrayOf(0f, 100f) // press for 100ms
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 100, stroke))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             svc.dispatchGesture(gesture, null, null)
@@ -111,9 +110,9 @@ object NonRootInputInjector {
         val path = Path()
         path.moveTo(x1, y1)
         path.lineTo(x2, y2)
-        val stroke = floatArrayOf(0f, ms)
+        val duration = ms.coerceAtLeast(1)
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, ms, stroke))
+            .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             svc.dispatchGesture(gesture, null, null)

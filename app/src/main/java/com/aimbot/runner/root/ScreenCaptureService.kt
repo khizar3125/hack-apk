@@ -4,7 +4,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.ImageFormat
+import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -14,8 +14,9 @@ import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.util.DisplayMetrics
 import android.util.Log
-import java.io.ByteArrayOutputStream
+import android.view.WindowManager
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -26,7 +27,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
  */
 class ScreenCaptureService : Service() {
 
-    private const val TAG = "ScreenCapture"
+    companion object {
+        private const val TAG = "ScreenCapture"
+    }
 
     @Volatile
     private var projection: MediaProjection? = null
@@ -54,12 +57,12 @@ class ScreenCaptureService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val display = dm.defaultDisplay
-        val size = android.graphics.Point()
-        display.getRealSize(size)
-        screenW = size.x
-        screenH = size.y
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        wm.defaultDisplay.getMetrics(metrics)
+        screenW = metrics.widthPixels
+        screenH = metrics.heightPixels
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -70,8 +73,12 @@ class ScreenCaptureService : Service() {
     /** Call from onStartCommand. Reads the MediaProjection result from ScreenCaptureHolder. */
     fun startCapture(context: Context) {
         val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val resultCode = ScreenCaptureHolder.resultCode
-        val data = ScreenCaptureHolder.resultData
+        val resultCode = com.aimbot.runner.ScreenCaptureHolder.resultCode
+        val data = com.aimbot.runner.ScreenCaptureHolder.resultData
+        if (data == null) {
+            Log.e(TAG, "resultData is null")
+            return
+        }
         projection = mgr.getMediaProjection(resultCode, data)
         if (projection == null) {
             Log.e(TAG, "MediaProjection is null")
@@ -79,7 +86,7 @@ class ScreenCaptureService : Service() {
         }
 
         val density = context.resources.displayMetrics.densityDpi
-        imageReader = ImageReader.newInstance(screenW, screenH, ImageFormat.RGBA_8888, 2)
+        imageReader = ImageReader.newInstance(screenW, screenH, PixelFormat.RGBA_8888, 2)
 
         captureThread = HandlerThread("ScreenCaptureThread")
         captureThread?.start()
@@ -140,35 +147,15 @@ class ScreenCaptureService : Service() {
     private fun imageToBitmap(image: Image): Bitmap {
         val width = image.width
         val height = image.height
-        val buffer = ByteArray(width * height * 4)
-        val planes = image.planes
-        for (i in planes.indices) {
-            val plane = planes[i]
-            val bb = plane.buffer
-            val rowStride = plane.rowStride
-            val pixelStride = plane.pixelStride ?: 1
-            for (y in 0 until height) {
-                val rowOffset = y * rowStride
-                for (x in 0 until width) {
-                    val pixelOffset = rowOffset + x * pixelStride
-                    val outIdx = (y * width + x) * 4
-                    if (pixelStride == 1 && rowStride == width) {
-                        buffer[outIdx] = bb.get(pixelOffset)
-                        buffer[outIdx + 1] = bb.get(pixelOffset + 1)
-                        buffer[outIdx + 2] = bb.get(pixelOffset + 2)
-                        buffer[outIdx + 3] = bb.get(pixelOffset + 3)
-                    } else {
-                        // Handle stride properly
-                        bb.position(pixelOffset)
-                        buffer[outIdx] = bb.get()
-                        buffer[outIdx + 1] = bb.get()
-                        buffer[outIdx + 2] = bb.get()
-                        buffer[outIdx + 3] = bb.get()
-                    }
-                }
-            }
-        }
-        return Bitmap.createBitmap(buffer, 0, width, height, Bitmap.Config.ARGB_8888)
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+        val rowStride = plane.rowStride
+        val pixelStride = plane.pixelStride
+        val rowPadding = rowStride - pixelStride * width
+        val bitmapWidth = width + rowPadding / pixelStride
+        val bitmap = Bitmap.createBitmap(bitmapWidth, height, Bitmap.Config.ARGB_8888)
+        bitmap.copyPixelsFromBuffer(buffer)
+        return Bitmap.createBitmap(bitmap, 0, 0, width, height)
     }
 }
 
@@ -187,16 +174,16 @@ object ScreenColorScanner {
         val visited = BooleanArray(w * h)
         val regions = mutableListOf<ColorRegion>()
 
-        for (y in 0 until h) {
-            for (x in 0 until w) {
-                val idx = y * w + x
+        for (py in 0 until h) {
+            for (px in 0 until w) {
+                val idx = py * w + px
                 if (visited[idx]) continue
                 val p = pixels[idx]
                 val r = (p shr 16) and 0xFF
                 val g = (p shr 8) and 0xFF
                 val b = p and 0xFF
                 if (Math.abs(r - targetR) <= tolerance && Math.abs(g - targetG) <= tolerance && Math.abs(b - targetB) <= tolerance) {
-                    val region = floodFill(pixels, visited, w, h, x, y, targetR, targetG, targetB, tolerance)
+                    val region = floodFill(pixels, visited, w, h, px, py, targetR, targetG, targetB, tolerance)
                     if (region.right - region.left > 5 && region.bottom - region.top > 5) {
                         regions.add(region)
                     }
@@ -216,13 +203,17 @@ object ScreenColorScanner {
     ): ColorRegion {
         val stack = java.util.Stack<IntArray>()
         stack.push(intArrayOf(startX, startY))
-        var minX = startX, maxX = startX, minY = startY, maxY = startY
+        var minX = startX
+        var maxX = startX
+        var minY = startY
+        var maxY = startY
 
         while (stack.isNotEmpty()) {
-            val p = stack.pop()
-            val x = p[0], y = p[1]
-            if (x < 0 || x >= w || y < 0 || y >= h) continue
-            val idx = y * w + x
+            val pt = stack.pop()
+            val cx = pt[0]
+            val cy = pt[1]
+            if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue
+            val idx = cy * w + cx
             if (visited[idx]) continue
             val px = pixels[idx]
             val r = (px shr 16) and 0xFF
@@ -230,14 +221,14 @@ object ScreenColorScanner {
             val b = px and 0xFF
             if (Math.abs(r - tr) > tol || Math.abs(g - tg) > tol || Math.abs(b - tb) > tol) continue
             visited[idx] = true
-            if (x < minX) minX = x
-            if (x > maxX) maxX = x
-            if (y < minY) minY = y
-            if (y > maxY) maxY = y
-            stack.push(intArrayOf(x + 1, y))
-            stack.push(intArrayOf(x - 1, y))
-            stack.push(intArrayOf(x, y + 1))
-            stack.push(intArrayOf(x, y - 1))
+            if (cx < minX) minX = cx
+            if (cx > maxX) maxX = cx
+            if (cy < minY) minY = cy
+            if (cy > maxY) maxY = cy
+            stack.push(intArrayOf(cx + 1, cy))
+            stack.push(intArrayOf(cx - 1, cy))
+            stack.push(intArrayOf(cx, cy + 1))
+            stack.push(intArrayOf(cx, cy - 1))
         }
         return ColorRegion(minX, minY, maxX, maxY)
     }
