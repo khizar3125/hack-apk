@@ -1,8 +1,0 @@
-<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:description="@string/app_name"
-    android:accessibilityEventTypes="typeAllMask"
-    android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault|flagRequestEnhancedWebAccessibility|flagReportViewIds"
-    android:canRetrieveWindowContent="true"
-    android:canPerformGestures="true"
-    android:settingsActivity="com.aimbot.runner.MainActivity" />
