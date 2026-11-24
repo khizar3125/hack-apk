@@ -1,0 +1,95 @@
+{
+  "title": "AI Se Video Kaise Banaye - Complete Tutorial",
+  "description": "सीखिए कि AI की मदद से प्रोफेशनल वीडियो कैसे बनाते हैं. यह वीडियो आपको स्टेप बाय स्टेप गाइड प्रदान करता है कि कैसे आप AI टूल्स का उपयोग करके अपने YouTube चैनल के लिए उच्च गुणवत्ता वाले वीडियो बना सकते हैं.",
+  "tags": [
+    "AI Video",
+    "Video Production",
+    "YouTube Tutorial",
+    "Hindi Tutorial",
+    "AI Tools",
+    "Video Editing",
+    "Content Creation",
+    "TTS",
+    "Text to Speech",
+    "AI Voice"
+  ],
+  "duration": "60 seconds",
+  "resolution": "1920x1080",
+  "fps": 30,
+  "language": "Hindi",
+  "created_at": "2026-11-24 17:41:05",
+  "script": [
+    {
+      "scene": "intro",
+      "start": 0,
+      "end": 5,
+      "title": "AI Se Video Kaise Banaye",
+      "subtitle": "Complete Tutorial",
+      "voice": "नमस्ते दोस्तों, स्वागत है हमारे चैनल पर. आज हम सीखेंगे कि AI की मदद से वीडियो कैसे बनाते हैं.",
+      "visual": "channel_intro"
+    },
+    {
+      "scene": "step1",
+      "start": 5,
+      "end": 12,
+      "title": "Step 1: Idea & Script",
+      "subtitle": "Planning Your Video",
+      "voice": "पहला कदम है अपने वीडियो का आइडिया तय करना. फिर उस आइडिया पर एक अच्छा सा स्क्रिप्ट लिखिए. स्क्रिप्ट में हर सीन का डायलॉग क्लियर हो.",
+      "visual": "script_writing"
+    },
+    {
+      "scene": "step2",
+      "start": 12,
+      "end": 20,
+      "title": "Step 2: Storyboard",
+      "subtitle": "Visual Planning",
+      "voice": "स्क्रिप्ट के बाद बारी आती है स्टोरीबोर्ड की. हर सीन का टाइम, कैमरा एंगल, और विजुअल्स डिसाइड करिए. यह आपके वीडियो को प्रोफेशनल बनाता है.",
+      "visual": "storyboard"
+    },
+    {
+      "scene": "step3",
+      "start": 20,
+      "end": 28,
+      "title": "Step 3: Generate Assets",
+      "subtitle": "AI Power",
+      "voice": "अब AI की मदद से इमेजेज, बैकग्राउंड, और एनिमेशन्स जनरेट करिए. आप चाहें तो कोड से भी यह सब कर सकते हैं.",
+      "visual": "ai_generation"
+    },
+    {
+      "scene": "step4",
+      "start": 28,
+      "end": 36,
+      "title": "Step 4: Voice Over",
+      "subtitle": "Add Narration",
+      "voice": "अपने स्क्रिप्ट के हिसाब से वॉइस ओवर रिकॉर्ड करिए या AI TTS से जनरेट करिए. वॉइस क्लियर और ऑडिबल होनी चाहिए.",
+      "visual": "voice_over"
+    },
+    {
+      "scene": "step5",
+      "start": 36,
+      "end": 44,
+      "title": "Step 5: Edit & Assemble",
+      "subtitle": "Final Touch",
+      "voice": "सब एसेट्स को मिला कर वीडियो बनाइए. ट्रांजिशन्स, इफेक्ट्स, और म्यूजिक एड करिए. यह आपका वीडियो और भी अट्रैक्टिव बनाता है.",
+      "visual": "video_editing"
+    },
+    {
+      "scene": "step6",
+      "start": 44,
+      "end": 52,
+      "title": "Step 6: QA & Upload",
+      "subtitle": "Publish",
+      "voice": "वीडियो को चेक करिए. ऑडियो लेवल, वीडियो क्वालिटी, और सबटाइटल्स सही हैं या नहीं. फिर YouTube पर अपलोड करिए.",
+      "visual": "upload"
+    },
+    {
+      "scene": "outro",
+      "start": 52,
+      "end": 60,
+      "title": "Subscribe & Like",
+      "subtitle": "Support Us",
+      "voice": "अगर आपको यह वीडियो पसंद आया, तो लाइक और सब्सक्राइब करना मत भूलिए. और हमें कमेंट में बताइए कि आपको कौन सा टॉपिक चाहिए.",
+      "visual": "subscribe"
+    }
+  ]
+}
