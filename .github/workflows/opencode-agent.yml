@@ -1,0 +1,93 @@
+name: OpenCode Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "App/feature to build"
+        required: true
+        type: string
+      model:
+        description: "Ollama model tag"
+        required: false
+        default: "qwen2.5-coder:7b-instruct-q4_k_m"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: opencode-agent
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghc /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          df -h /
+
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -s http://127.0.0.1:11434/ >/dev/null 2>&1 && break || sleep 2
+          done
+          curl -s http://127.0.0.1:11434/
+
+      - name: Pull model
+        run: |
+          echo "MODEL=${{ inputs.model }}" >> "$GITHUB_ENV"
+          ollama pull "$MODEL"
+
+      - name: Install OpenCode
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Point OpenCode at local Ollama
+        run: |
+          mkdir -p ~/.config/opencode
+          cat > ~/.config/opencode/opencode.json <<JSON
+          {
+            "\$schema": "https://opencode.ai/config.json",
+            "autoupdate": false,
+            "permission": { "edit": "allow", "bash": "allow", "webfetch": "allow" },
+            "provider": {
+              "ollama": {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "Ollama (local)",
+                "options": { "baseURL": "http://127.0.0.1:11434/v1", "apiKey": "ollama" },
+                "models": { "$MODEL": { "name": "Qwen Coder (local)" } }
+              }
+            },
+            "model": "ollama/$MODEL"
+          }
+          JSON
+
+      - name: Run OpenCode on prompt
+        env:
+          PROMPT: ${{ inputs.prompt }}
+        run: |
+          mkdir -p runs/${{ github.run_id }}
+          cd runs/${{ github.run_id }}
+          printf '%s\n' 'You are building a project from scratch. Write complete, working code. Use the shell to create files, run builds and run tests until everything works.' > system-note.txt
+          opencode run --model "ollama/$MODEL" "$(cat system-note.txt) TASK: $PROMPT" | tee agent-log.txt
+
+      - name: Commit run output
+        run: |
+          git config user.name "opencode-agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add runs
+          git commit -m "agent run: ${{ github.run_id }}" || echo "nothing to commit"
+          git push
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ github.run_id }}
+          path: runs/${{ github.run_id }}
