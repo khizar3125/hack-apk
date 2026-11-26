@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Paradox" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">#05070D</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>
