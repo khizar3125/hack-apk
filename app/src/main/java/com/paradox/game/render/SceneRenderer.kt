@@ -11,7 +11,6 @@ import com.paradox.game.engine.smoothStep
 import com.paradox.game.game.GameLogic
 import com.paradox.game.game.GameState
 import com.paradox.game.game.LevelSpec
-import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
@@ -25,47 +24,74 @@ class SceneRenderer(val gl: GlGameRenderer) {
     private var targetDist = 26f
     private var targetYaw = yaw
     private var targetPitch = pitch
+    private var shakeAmp = 0f
 
     private var spec: LevelSpec? = null
     private var logic: GameLogic? = null
 
-    private var floorMesh: Mesh? = null
+    private var tileMesh: Mesh? = null
+    private var seamMesh: Mesh? = null
     private var wallMesh: Mesh? = null
-    private var accentMesh: Mesh? = null
+    private var wallGlowMesh: Mesh? = null
 
-    private var center = Vec3.Zero
-    private var extraEntities = ArrayList<EntityMesh>()
-    var gfxEnabled = true
+    private var centerX = 0f
+    private var centerY = 0f
+    private var centerZ = 0f
 
-    private class EntityMesh(var mesh: Mesh, val cell: Vec3i, val kind: Int, var param: Int)
+    private var entities = ArrayList<Entity>()
+    private var doorAnim = HashMap<Vec3i, Float>()
+    private var switchAnim = HashMap<Vec3i, Float>()
+
+    private var playerBody: Mesh? = null
+    private var portalRing: Mesh? = null
+    private var padArrow: Mesh? = null
+    private var padFlat: Mesh? = null
+    private var bgOcta1: Mesh? = null
+    private var bgOcta2: Mesh? = null
+    private var goalPlate: Mesh? = null
+
+    private var gfxEnabled = true
+    var time = 0f
+
+    private class Entity(val mesh: Mesh, val cell: Vec3i, val kind: Int, val param: Int, val rotY: Float = 0f)
 
     private val tints = arrayOf(
-        arrayOf(Vec3(0.16f, 0.20f, 0.30f), Vec3(0.30f, 0.45f, 0.62f)),
-        arrayOf(Vec3(0.14f, 0.22f, 0.34f), Vec3(0.25f, 0.55f, 0.70f)),
-        arrayOf(Vec3(0.18f, 0.16f, 0.30f), Vec3(0.48f, 0.36f, 0.66f)),
-        arrayOf(Vec3(0.22f, 0.14f, 0.32f), Vec3(0.60f, 0.30f, 0.72f)),
-        arrayOf(Vec3(0.26f, 0.18f, 0.14f), Vec3(0.72f, 0.46f, 0.22f)),
-        arrayOf(Vec3(0.13f, 0.24f, 0.26f), Vec3(0.22f, 0.68f, 0.62f))
+        arrayOf(Vec3(0.14f, 0.19f, 0.30f), Vec3(0.30f, 0.45f, 0.62f)),
+        arrayOf(Vec3(0.12f, 0.21f, 0.34f), Vec3(0.25f, 0.55f, 0.70f)),
+        arrayOf(Vec3(0.17f, 0.14f, 0.30f), Vec3(0.48f, 0.36f, 0.66f)),
+        arrayOf(Vec3(0.22f, 0.13f, 0.32f), Vec3(0.60f, 0.30f, 0.72f)),
+        arrayOf(Vec3(0.27f, 0.17f, 0.13f), Vec3(0.72f, 0.46f, 0.22f)),
+        arrayOf(Vec3(0.11f, 0.24f, 0.26f), Vec3(0.22f, 0.68f, 0.62f))
     )
 
     fun setLevel(s: LevelSpec, l: GameLogic) {
         spec = s
         logic = l
-        yaw = 0.7f; pitch = 0.95f; dist = 26f
-        targetYaw = yaw; targetPitch = pitch; targetDist = dist
         rebuild()
     }
 
     private fun rebuild() {
         val s = spec ?: return
-        val fb = MeshBuilder()
+        val tb = MeshBuilder()
+        val sb = MeshBuilder()
         val wb = MeshBuilder()
-        val ab = MeshBuilder()
+        val wg = MeshBuilder()
         var minX = 999; var maxX = -999; var minY = 99; var maxY = -99; var minZ = 999; var maxZ = -999
+
         for (c in s.solids) {
-            val m = if (c.y < 0) fb else wb
-            val col = if (c.y < 0) Vec3(1f, 1f, 1f) else Vec3(0.85f, 0.85f, 1f)
-            m.cube(c.x + 0.5f, c.y + 0.5f, c.z + 0.5f, 0.5f, 0.5f, 0.5f, col, col)
+            val cx = c.x + 0.5f; val cy = c.y + 0.5f; val cz = c.z + 0.5f
+            if (c.y < 0) {
+                tb.cube(cx, cy - 0.03f, cz, 0.49f, 0.47f, 0.49f, Vec3(0.95f, 0.97f, 1f), Vec3(0.8f, 0.85f, 0.95f))
+                val f = 0.44f
+                sb.cube(cx, c.y + 0.94f, cz - f, 0.44f, 0.035f, 0.045f, SEAM, SEAM)
+                sb.cube(cx, c.y + 0.94f, cz + f, 0.44f, 0.035f, 0.045f, SEAM, SEAM)
+                sb.cube(cx - f, c.y + 0.94f, cz, 0.045f, 0.035f, 0.44f, SEAM, SEAM)
+                sb.cube(cx + f, c.y + 0.94f, cz, 0.045f, 0.035f, 0.44f, SEAM, SEAM)
+            } else {
+                wb.cube(cx, cy, cz, 0.48f, 0.5f, 0.48f, Vec3(0.9f, 0.9f, 1f), Vec3(0.75f, 0.78f, 0.92f))
+                wg.cube(cx, c.y + 1.0f, cz, 0.40f, 0.03f, 0.40f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f))
+                wg.cube(cx, c.y + 0.45f, cz, 0.42f, 0.015f, 0.42f, GLOWLINE, GLOWLINE)
+            }
             if (c.x < minX) minX = c.x; if (c.x > maxX) maxX = c.x
             if (c.y < minY) minY = c.y; if (c.y > maxY) maxY = c.y
             if (c.z < minZ) minZ = c.z; if (c.z > maxZ) maxZ = c.z
@@ -75,46 +101,100 @@ class SceneRenderer(val gl: GlGameRenderer) {
         centerZ = (minZ + maxZ) / 2f + 0.5f
         val span = maxOf(maxX - minX, maxZ - minZ).coerceAtLeast(6)
         targetDist = 14f + span * 1.4f
-        dist = targetDist
 
-        extraEntities = ArrayList()
+        tileMesh = tb.build()
+        seamMesh = sb.build()
+        wallMesh = wb.build()
+        wallGlowMesh = wg.build()
+
+        entities = ArrayList()
+        val pr = MeshBuilder()
+        pr.ring(0f, 0.14f, 0f, 0.36f, 0.05f, PORTAL_COL, 10)
+        pr.cube(0f, 0.14f, 0f, 0.30f, 0.06f, 0.30f, PORTAL_COL * 1.4f, PORTAL_COL)
+        pr.cube(0f, 0.30f, 0f, 0.16f, 0.10f, 0.16f, PORTAL_COL * 1.6f, PORTAL_COL)
+        portalRing = pr.build()
+
+        val pa = MeshBuilder()
+        pa.cube(0f, -0.30f, 0f, 0.46f, 0.08f, 0.46f, Vec3(0.7f, 0.7f, 0.75f), Vec3(0.5f, 0.5f, 0.55f))
+        pa.chevronX(0f, -0.16f, 0f, 0.05f, Vec3(1f, 1f, 1f))
+        pa.chevronX(-0.16f, -0.16f, 0f, 0.035f, Vec3(0.8f, 0.8f, 0.85f))
+        padArrow = pa.build()
+
+        val pf = MeshBuilder()
+        pf.cube(0f, -0.30f, 0f, 0.46f, 0.08f, 0.46f, Vec3(0.7f, 0.7f, 0.75f), Vec3(0.5f, 0.5f, 0.55f))
+        pf.ring(0f, -0.17f, 0f, 0.22f, 0.045f, Vec3(1f, 1f, 1f), 8)
+        padFlat = pf.build()
+
         for (g in s.gravityPads) {
-            val b = MeshBuilder()
-            val gt = gravColor(g.gravity)
-            b.cube(0f, -0.28f, 0f, 0.46f, 0.08f, 0.46f, gt, gt)
-            b.cube(0f, -0.14f, 0f, 0.22f, 0.1f, 0.22f, gt * 1.3f, gt)
-            extraEntities.add(EntityMesh(b.build(), g.cell, KIND_PAD, g.gravity))
+            val rot = when (g.gravity) {
+                2 -> 0f; 3 -> 180f; 4 -> 90f; 5 -> 270f
+                else -> 0f
+            }
+            val flat = g.gravity <= 1
+            entities.add(Entity(if (flat) padFlat!! else padArrow!!, g.cell, KIND_PAD, g.gravity, rot))
         }
+
         for (p in s.portals) {
             if (p.size >= 6) {
-                val a = Vec3i(p[0], p[1], p[2])
-                val b2 = Vec3i(p[3], p[4], p[5])
-                val mb = MeshBuilder()
-                mb.cube(0f, 0.05f, 0f, 0.42f, 0.1f, 0.42f, PORTAL_COL * 0.6f, PORTAL_COL)
-                mb.cube(0f, 0.28f, 0f, 0.3f, 0.14f, 0.3f, PORTAL_COL, PORTAL_COL)
-                extraEntities.add(EntityMesh(mb.build(), a, KIND_PORTAL, 0))
-                extraEntities.add(EntityMesh(mb.build(), b2, KIND_PORTAL, 0))
+                entities.add(Entity(portalRing!!, Vec3i(p[0], p[1], p[2]), KIND_PORTAL, 0))
+                entities.add(Entity(portalRing!!, Vec3i(p[3], p[4], p[5]), KIND_PORTAL, 0))
             }
         }
+
         for (sw in s.switches) {
             val mb = MeshBuilder()
-            mb.cube(0f, 0.1f, 0f, 0.34f, 0.2f, 0.34f, Vec3(0.95f, 0.75f, 0.3f), Vec3(0.8f, 0.6f, 0.2f))
-            extraEntities.add(EntityMesh(mb.build(), sw.cell, KIND_SWITCH, 0))
+            mb.cube(0f, 0.06f, 0f, 0.36f, 0.14f, 0.36f, Vec3(0.35f, 0.38f, 0.5f), Vec3(0.28f, 0.30f, 0.42f))
+            mb.cube(0f, 0.20f, 0f, 0.26f, 0.07f, 0.26f, Vec3(1f, 0.85f, 0.35f), Vec3(0.85f, 0.65f, 0.2f))
+            mb.ring(0f, 0.30f, 0f, 0.14f, 0.03f, Vec3(1f, 0.9f, 0.4f), 6)
+            entities.add(Entity(mb.build(), sw.cell, KIND_SWITCH, 0))
         }
+
         for (c in s.cubes) {
             val mb = MeshBuilder()
-            mb.cube(0f, 0f, 0f, 0.42f, 0.42f, 0.42f, CUBE_COL, CUBE_COL * 0.8f)
-            extraEntities.add(EntityMesh(mb.build(), c, KIND_CUBE, 0))
+            mb.cube(0f, 0f, 0f, 0.40f, 0.40f, 0.40f, CUBE_TOP, CUBE_COL * 0.85f)
+            mb.cube(0f, 0.41f, 0f, 0.28f, 0.03f, 0.28f, Vec3(1f, 0.9f, 0.5f), Vec3(1f, 0.85f, 0.4f))
+            mb.cube(0f, 0f, 0f, 0.16f, 0.17f, 0.16f, CUBE_COL * 1.5f, CUBE_COL * 1.2f)
+            entities.add(Entity(mb.build(), c, KIND_CUBE, 0))
         }
 
-        floorMesh = fb.build()
-        wallMesh = wb.build()
-        accentMesh = ab.build()
-    }
+        for (r in s.rotators) {
+            val mb = MeshBuilder()
+            for (t in r.tiles) {
+                mb.cube(t.x + 0.5f - r.pivot.x - 0.5f, (t.y - r.pivot.y).toFloat(), t.z + 0.5f - r.pivot.z - 0.5f, 0.47f, 0.15f, 0.47f, Vec3(0.9f, 0.4f, 1f), Vec3(0.6f, 0.25f, 0.8f))
+            }
+            mb.octahedron(0f, 0.55f, 0f, 0.16f, Vec3(1f, 0.6f, 1f), Vec3(0.7f, 0.3f, 0.9f))
+            entities.add(Entity(mb.build(), r.pivot, KIND_ROTATOR, 0))
+        }
 
-    private var centerX = 0f
-    private var centerY = 0f
-    private var centerZ = 0f
+        val pb = MeshBuilder()
+        pb.cube(0f, 0.0f, 0f, 0.26f, 0.26f, 0.22f, Vec3(0.95f, 1f, 1f), Vec3(0.55f, 0.65f, 0.75f))
+        pb.cube(0f, 0.30f, 0f, 0.17f, 0.15f, 0.15f, Vec3(1f, 1f, 1f), Vec3(0.7f, 0.8f, 0.9f))
+        pb.cube(0f, 0.32f, 0.14f, 0.10f, 0.05f, 0.045f, Vec3(0.2f, 1f, 1.4f), Vec3(0.1f, 0.9f, 1.2f))
+        pb.cube(-0.30f, -0.05f, 0f, 0.06f, 0.16f, 0.10f, Vec3(0.4f, 0.9f, 1.2f), Vec3(0.3f, 0.7f, 0.9f))
+        pb.cube(0.30f, -0.05f, 0f, 0.06f, 0.16f, 0.10f, Vec3(0.4f, 0.9f, 1.2f), Vec3(0.3f, 0.7f, 0.9f))
+        pb.cube(0f, 0.50f, 0f, 0.02f, 0.09f, 0.02f, Vec3(0.6f, 1f, 1f), Vec3(0.5f, 0.9f, 1f))
+        pb.cube(0f, 0.60f, 0f, 0.05f, 0.045f, 0.05f, Vec3(0.3f, 1.4f, 1.5f), Vec3(0.2f, 1.2f, 1.3f))
+        playerBody = pb.build()
+
+        val gp = MeshBuilder()
+        gp.cube(0f, -0.44f, 0f, 0.46f, 0.05f, 0.46f, Vec3(1f, 1f, 1f), Vec3(0.8f, 0.85f, 0.9f))
+        gp.ring(0f, -0.36f, 0f, 0.34f, 0.04f, Vec3(1f, 1f, 1.2f), 8)
+        goalPlate = gp.build()
+
+        val o1 = MeshBuilder()
+        o1.octahedron(0f, 0f, 0f, 1f, Vec3(0.35f, 0.30f, 0.6f), Vec3(0.22f, 0.18f, 0.42f))
+        bgOcta1 = o1.build()
+        val o2 = MeshBuilder()
+        o2.octahedron(0f, 0f, 0f, 1f, Vec3(0.2f, 0.3f, 0.45f), Vec3(0.14f, 0.22f, 0.36f))
+        bgOcta2 = o2.build()
+
+        doorAnim.clear()
+        switchAnim.clear()
+        yaw = targetYaw + 2.6f
+        pitch = 1.25f
+        dist = targetDist * 2.1f
+        shakeAmp = 0f
+    }
 
     fun orbitBy(dx: Float, dy: Float) {
         targetYaw += dx * 0.008f
@@ -125,14 +205,8 @@ class SceneRenderer(val gl: GlGameRenderer) {
         targetDist = (targetDist * (1f + s * 0.0015f)).coerceIn(9f, 60f)
     }
 
-    fun snapYaw(dir: Vec3i): Vec3i {
-        val q = Math.round(targetYaw / (PI.toFloat() / 2f)) % 4
-        return dir
-    }
-
     fun screenDirFor(st: GameState, sx: Float, sy: Float, logic: GameLogic): Vec3i {
         val dirs = logic.allMoveDirs(st)
-        val camUp = Vec3(sin(pitch) * sin(yaw), cos(pitch), sin(pitch) * cos(yaw))
         val fwd = Vec3(-sin(yaw) * cos(pitch), -sin(pitch), -cos(yaw) * cos(pitch))
         val right = fwd.cross(Vec3.Y).normalized()
         val up = right.cross(fwd)
@@ -156,101 +230,179 @@ class SceneRenderer(val gl: GlGameRenderer) {
         return screenDirFor(st, sxn, syn, logic)
     }
 
+    fun shake(a: Float) { shakeAmp = maxOf(shakeAmp, a) }
+
     fun update(dt: Float, st: GameState, anim: PlayerAnim) {
-        val l = (1f - Math.exp(-9.0 * dt)).toFloat()
+        time += dt
+        shakeAmp *= (1f - 4f * dt).coerceIn(0f, 1f)
+        val l = (1f - Math.exp(-5.0 * dt)).toFloat()
         yaw += (targetYaw - yaw) * l
         pitch += (targetPitch - pitch) * l
         dist += (targetDist - dist) * l
+        animateMaps(dt, st)
+        if (gfxEnabled && st != null && !st.dead && !st.finished && kotlin.random.Random.nextFloat() < 0.10f) {
+            spawnDust()
+        }
         val cy = cos(yaw); val sy = sin(yaw)
         val cp = cos(pitch); val sp = sin(pitch)
-        val eye = Vec3(centerX + dist * cp * sy, centerY + dist * sp, centerZ + dist * cp * cy)
-        gl.camera.eye = eye
+        val shx = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmp
+        val shy = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmp
+        gl.camera.eye = Vec3(centerX + dist * cp * sy + shx, centerY + dist * sp + shy, centerZ + dist * cp * cy)
         gl.camera.target = Vec3(centerX, centerY - 1f, centerZ)
         draw(st, dt, anim)
     }
 
+    private fun animateMaps(dt: Float, st: GameState) {
+        val s = spec ?: return
+        val wl = logic ?: return
+        for (d in s.doors) {
+            val cur = doorAnim.getOrPut(d.cell) { 1f }
+            val target = if (wl.isSolid(st, d.cell)) 1f else 0f
+            doorAnim[d.cell] = cur + (target - cur) * (1f - Math.exp(-10.0 * dt)).toFloat()
+        }
+        for (t in s.timedDoors) {
+            val cur = doorAnim.getOrPut(t.cell) { 1f }
+            val target = if (wl.isTimedClosed(st, t)) 1f else 0f
+            doorAnim[t.cell] = cur + (target - cur) * (1f - Math.exp(-10.0 * dt)).toFloat()
+        }
+        for (sw in s.switches) {
+            val cur = switchAnim.getOrPut(sw.cell) { 0f }
+            val target = if (st.pressedChannels.contains(sw.channel)) 1f else 0f
+            switchAnim[sw.cell] = cur + (target - cur) * (1f - Math.exp(-12.0 * dt)).toFloat()
+        }
+    }
+
+    private fun spawnDust() {
+        val r = 4f + kotlin.random.Random.nextFloat() * 14f
+        val a = kotlin.random.Random.nextFloat() * 6.2832f
+        gl.spawnParticle(Particle(
+            pos = Vec3(centerX + r * cos(a), centerY - 4f + kotlin.random.Random.nextFloat() * 10f, centerZ + r * sin(a)),
+            vel = Vec3(0.05f, 0.10f, 0.05f),
+            color = Vec3(0.35f, 0.5f, 0.8f),
+            life = 2.5f, maxLife = 2.5f, size = 14f, gravity = 0f
+        ))
+    }
+
     private fun draw(st: GameState, dt: Float, anim: PlayerAnim) {
         val s = spec ?: return
+        val wl = logic ?: return
         val pal = tints[s.tint % tints.size]
         gl.beginScene()
         gl.clearColor = Vec3(0.012f, 0.016f, 0.04f)
-        gl.drawMesh(floorMesh ?: return, Mat4.identity(), pal[0], 0.0f)
+        gl.fogNear = 26f
+        gl.fogFar = 95f
 
-        val wl = logic ?: return
-
-        for (w in (s.solids.filter { it.y >= 0 })) {
-            var sz = Vec3(1f, 1f, 1f)
-            var col = pal[1]
-            var emi = 0.08f
-            if (s.doors.any { it.cell == w }) {
-                val closedNow = wl.isSolid(st, w)
-                col = if (closedNow) Vec3(1.0f, 0.36f, 0.28f) else Vec3(1.0f, 0.62f, 0.20f) * 0.5f
-                emi = if (closedNow) 0.5f else 0.15f
-                sz = if (closedNow) Vec3(1f, 1f, 1f) else Vec3(1f, 0.16f, 1f)
-            } else if (s.timedDoors.isNotEmpty() && s.timedDoors.any { it.cell == w }) {
-                val closedNow = wl.isSolid(st, w)
-                col = if (closedNow) Vec3(0.95f, 0.9f, 0.3f) else Vec3(0.4f, 0.4f, 0.16f)
-                emi = if (closedNow) 0.55f else 0.1f
-                sz = if (closedNow) Vec3(1f, 1f, 1f) else Vec3(1f, 0.16f, 1f)
-            }
-            gl.drawCube(w.toV3() + Vec3(0.5f, 0.5f, 0.5f), sz, 0f, col, emi)
+        bgOcta1?.let {
+            val m = Mat4.mul(Mat4.translation(Vec3(centerX, centerY + 9f, centerZ)), Mat4.mul(Mat4.rotationY(time * 0.06f), Mat4.scale(Vec3(26f, 26f, 26f))))
+            gl.drawMesh(it, m, Vec3(1f, 1f, 1f), 0.06f)
         }
+        bgOcta2?.let {
+            val m = Mat4.mul(Mat4.translation(Vec3(centerX + 4f, centerY + 13f, centerZ - 5f)), Mat4.mul(Mat4.rotationY(-time * 0.045f), Mat4.scale(Vec3(38f, 38f, 38f))))
+            gl.drawMesh(it, m, Vec3(1f, 1f, 1f), 0.04f)
+        }
+
+        tileMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[0], 0.0f) }
+        seamMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.85f) }
+        wallMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[1] * 0.9f, 0.05f) }
+        wallGlowMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.7f) }
 
         for (b in s.bridges) {
             val solid = st.phase in b.solidPhases
-            val col = if (solid) Vec3(0.4f, 0.95f, 1.0f) else Vec3(0.25f, 0.3f, 0.42f)
-            val sz = if (solid) Vec3(1f, 0.9f, 1f) else Vec3(0.7f, 0.25f, 0.7f)
-            val flick = if (solid) 0.15f * sin(System.nanoTime() / 300_000_000f).coerceAtLeast(-1f) + 0.4f else 0.0f
-            gl.drawCube(b.cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), sz, 0f, col, if (solid) 0.45f + flick else 0.05f)
-        }
-
-        for (r in s.rotators.indices) {
-            val cells = wl.rotatorCells(r, st)
-            for (c in cells) {
-                gl.drawCube(c.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(0.94f, 0.3f, 0.94f), 0f, Vec3(0.85f, 0.35f, 1.0f), 0.3f)
+            val flick = 0.5f + 0.5f * sin(time * 5f)
+            val col = if (solid) Vec3(0.35f, 0.9f, 1.0f) else Vec3(0.22f, 0.26f, 0.38f)
+            val h = if (solid) 0.16f else 0.05f
+            gl.drawCube(b.cell.toV3() + Vec3(0.5f, 0.06f, 0.5f), Vec3(0.92f, h, 0.92f), 0f, col, if (solid) 0.55f + 0.25f * flick else 0.06f)
+            if (solid) {
+                gl.drawCube(b.cell.toV3() + Vec3(0.5f, 0.02f, 0.5f), Vec3(0.96f, 0.02f, 0.96f), 0f, Vec3(0.5f, 1f, 1.2f), 0.9f)
             }
-            gl.drawCube(s.rotators[r].pivot.toV3() + Vec3(0.5f, 1.1f, 0.5f), Vec3(0.2f, 0.2f, 0.2f), 0f, Vec3(1f, 0.5f, 1f), 0.8f)
         }
 
-        val time = System.currentTimeMillis() / 1000f
-        for (e in extraEntities) {
+        for (e in entities) {
             when (e.kind) {
-                KIND_PAD -> gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3()), gravColor(e.param), 0.5f)
+                KIND_PAD -> {
+                    val model = Mat4.mul(Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0f, 0.5f)), Mat4.rotationY(e.rotY * Math.PI.toFloat() / 180f))
+                    gl.drawMesh(e.mesh, model, gravColor(e.param), 0.55f)
+                }
                 KIND_PORTAL -> {
-                    val bob = 0.06f * sin(time * 2f + e.cell.x + e.cell.z)
-                    gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3() + Vec3(0f, bob, 0f)), PORTAL_COL, 0.85f)
+                    val bob = 0.07f * sin(time * 2f + e.cell.x * 1.3f + e.cell.z)
+                    gl.drawMesh(e.mesh, Mat4.mul(Mat4.translation(e.cell.toV3() + Vec3(0.5f, bob, 0.5f)), Mat4.rotationY(time * 1.2f)), PORTAL_COL, 0.95f)
+                    if (gfxEnabled && kotlin.random.Random.nextFloat() < 0.25f) {
+                        val a = kotlin.random.Random.nextFloat() * 6.2832f
+                        gl.spawnParticle(Particle(
+                            pos = e.cell.toV3() + Vec3(0.5f + 0.3f * cos(a), 0.2f, 0.5f + 0.3f * sin(a)),
+                            vel = Vec3(0f, 0.9f, 0f), color = PORTAL_COL * 1.4f,
+                            life = 0.6f, maxLife = 0.6f, size = 24f, gravity = 0f
+                        ))
+                    }
                 }
                 KIND_SWITCH -> {
-                    val pressed = st.pressedChannels.contains(s.switches.firstOrNull { it.cell == e.cell }?.channel ?: "")
-                    gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3()), if (pressed) Vec3(1f, 0.9f, 0.3f) else Vec3(0.6f, 0.5f, 0.25f), if (pressed) 0.7f else 0.2f)
+                    val press = switchAnim[e.cell] ?: 0f
+                    val base = Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0f, 0.5f))
+                    gl.drawMesh(e.mesh, base, Vec3(1f, 1f, 1f), 0.15f + 0.5f * press)
+                    gl.drawCube(e.cell.toV3() + Vec3(0.5f, 0.26f - 0.10f * press, 0.5f), Vec3(0.24f, 0.05f, 0.24f), 0f, if (press > 0.5f) Vec3(0.4f, 1.4f, 0.5f) else Vec3(1f, 0.9f, 0.35f), 0.8f)
                 }
                 KIND_CUBE -> {
                     val idx = st.cubes.indexOf(e.cell)
-                    if (idx >= 0) gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0.5f, 0.5f)), CUBE_COL, 0.15f)
+                    if (idx >= 0) {
+                        val bob = if (!st.dead) 0.02f * sin(time * 3f + idx) else 0f
+                        gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0.42f + bob, 0.5f)), Vec3(1f, 1f, 1f), 0.25f)
+                    }
+                }
+                KIND_ROTATOR -> {
+                    val pivot = e.cell
+                    val q = st.rotStates.getOrNull(spec!!.rotators.indexOfFirst { it.pivot == pivot }) ?: 0
+                    val angle = -q * (Math.PI.toFloat() / 2f) + time * 0.3f
+                    val m = Mat4.mul(Mat4.translation(pivot.toV3() + Vec3(0.5f, 0.5f, 0.5f)), Mat4.rotationY(angle))
+                    gl.drawMesh(e.mesh, m, Vec3(1f, 1f, 1f), 0.3f)
                 }
             }
         }
 
-        val goal = s.goal
-        val pulse = 0.5f + 0.5f * sin(time * 2.2f)
-        gl.drawCube(goal.toV3() + Vec3(0.5f, 1.1f, 0.5f), Vec3(0.55f, 0.12f, 0.55f), time, Vec3(1f, 1f, 1f), 1.0f)
-        gl.drawCube(goal.toV3() + Vec3(0.5f, 0.5f + 1.2f + 0.1f * pulse, 0.5f), Vec3(0.18f, 0.18f, 0.18f), time * 1.4f, Vec3(0.8f, 1f, 1f), 1.0f)
-        if (gfxEnabled && dt > 0f && kotlin.random.Random.nextFloat() < 0.35f) {
-            val a = kotlin.random.Random.nextFloat() * 2f * PI.toFloat()
+        for (d in s.doors) {
+            val open = 1f - (doorAnim[d.cell] ?: 1f)
+            val closed = wl.isSolid(st, d.cell)
+            val col = if (closed) Vec3(1.0f, 0.30f, 0.22f) else Vec3(0.35f, 0.9f, 0.4f)
+            val h = 0.5f * (doorAnim[d.cell] ?: 1f).coerceIn(0.06f, 1f)
+            gl.drawCube(d.cell.toV3() + Vec3(0.5f, h, 0.5f), Vec3(0.9f, h, 0.9f), 0f, col, if (closed) 0.5f else 0.35f)
+            if (open > 0.05f) gl.drawCube(d.cell.toV3() + Vec3(0.5f, 0.03f, 0.5f), Vec3(0.85f, 0.02f, 0.85f), 0f, Vec3(0.3f, 1.2f, 0.4f), 0.9f)
+        }
+        for (t in s.timedDoors) {
+            val closed = wl.isTimedClosed(st, t)
+            val h = (doorAnim[t.cell] ?: 1f).coerceIn(0.06f, 1f) * 0.5f
+            val blink = 0.5f + 0.5f * sin(st.time / t.period * 6.2832f + t.offset * 6.2832f)
+            val col = if (closed) Vec3(1.0f, 0.85f, 0.25f) else Vec3(0.4f, 0.55f, 0.2f)
+            gl.drawCube(t.cell.toV3() + Vec3(0.5f, h, 0.5f), Vec3(0.9f, h, 0.9f), 0f, col, if (closed) 0.45f + 0.3f * blink else 0.15f)
+        }
+
+        goalPlate?.let {
+            gl.drawMesh(it, Mat4.translation(s.goal.toV3() + Vec3(0.5f, 0f, 0.5f)), Vec3(1f, 1f, 1f), 0.9f)
+        }
+        val pulse = 0.5f + 0.5f * sin(time * 2.4f)
+        gl.drawCube(s.goal.toV3() + Vec3(0.5f, 1.4f, 0.5f), Vec3(0.10f, 1.5f, 0.10f), 0f, Vec3(0.75f, 0.95f, 1.1f), 0.85f)
+        val dm = Mat4.mul(Mat4.translation(s.goal.toV3() + Vec3(0.5f, 2.3f + 0.15f * pulse, 0.5f)), Mat4.rotationY(time * 1.5f))
+        gl.drawMesh(bgOcta1 ?: return, Mat4.mul(Mat4.translation(s.goal.toV3() + Vec3(0.5f, 2.3f, 0.5f)), Mat4.mul(Mat4.rotationY(-time * 2.2f), Mat4.scale(Vec3(0.22f, 0.22f, 0.22f)))), Vec3(1.2f, 1.3f, 1.4f), 1.0f)
+        if (gfxEnabled && kotlin.random.Random.nextFloat() < 0.5f) {
+            val a = kotlin.random.Random.nextFloat() * 6.2832f
             gl.spawnParticle(Particle(
-                pos = goal.toV3() + Vec3(0.5f + 0.6f * cos(a), 1.2f, 0.5f + 0.6f * sin(a)),
-                vel = Vec3(0f, 0.7f, 0f), color = Vec3(0.7f, 0.95f, 1f),
-                life = 0.8f, maxLife = 0.8f, size = 26f, gravity = 0.2f
+                pos = s.goal.toV3() + Vec3(0.5f + 0.5f * cos(a), 1.0f + kotlin.random.Random.nextFloat() * 2.2f, 0.5f + 0.5f * sin(a)),
+                vel = Vec3(0f, 0.5f, 0f), color = Vec3(0.8f, 0.95f, 1f),
+                life = 1.0f, maxLife = 1.0f, size = 26f, gravity = 0f
             ))
         }
 
-        val pp = anim.visualPos()
-        val bob = 0.04f * sin(time * 6f)
-        gl.drawCube(Vec3(pp.x + 0.5f, pp.y + 0.5f + bob, pp.z + 0.5f), Vec3(0.62f, 0.62f, 0.62f), anim.spin, Vec3(0.9f, 1f, 1f), 0.55f)
-        gl.drawCube(Vec3(pp.x + 0.5f, pp.y + 1.0f + bob, pp.z + 0.5f), Vec3(0.28f, 0.28f, 0.28f), -anim.spin * 0.7f, Vec3(0.55f, 0.85f, 1f), 0.8f)
+        if (!st.dead) {
+            val pp = anim.visualPos()
+            val moving = anim.t < 1f
+            val bob = 0.06f * sin(time * 5f) + (if (moving) 0.10f * sin(anim.t * 3.1416f) else 0f)
+            val squash = if (moving) 1f + 0.10f * sin(anim.t * 3.1416f) else 1f
+            val pm = Mat4.mul(
+                Mat4.translation(Vec3(pp.x + 0.5f, pp.y + 0.55f * squash + bob, pp.z + 0.5f)),
+                Mat4.mul(Mat4.rotationY(anim.spin), Mat4.scale(Vec3(1f, squash, 1f)))
+            )
+            playerBody?.let { gl.drawMesh(it, pm, Vec3(1f, 1f, 1f), 0.5f) }
+            gl.drawCube(Vec3(pp.x + 0.5f, pp.y + 0.04f, pp.z + 0.5f), Vec3(0.42f, 0.02f, 0.42f), anim.spin, Vec3(0.3f, 0.8f, 1.1f), 0.9f)
+        }
     }
-
-    private fun baseSolidHas(s: LevelSpec, c: Vec3i): Boolean = s.solids.contains(c)
 
     private fun gravColor(g: Int): Vec3 = when (g) {
         0 -> Vec3(0.3f, 0.9f, 1f)
@@ -266,8 +418,12 @@ class SceneRenderer(val gl: GlGameRenderer) {
         const val KIND_PORTAL = 1
         const val KIND_SWITCH = 2
         const val KIND_CUBE = 3
+        const val KIND_ROTATOR = 4
         val PORTAL_COL = Vec3(0.65f, 0.4f, 1.0f)
         val CUBE_COL = Vec3(1.0f, 0.72f, 0.25f)
+        val CUBE_TOP = Vec3(1.0f, 0.8f, 0.4f)
+        val SEAM = Vec3(0.25f, 0.7f, 1.0f)
+        val GLOWLINE = Vec3(0.5f, 0.3f, 0.9f)
     }
 }
 

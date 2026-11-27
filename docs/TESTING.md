@@ -54,6 +54,34 @@
   immersive mode re-applied on focus, singleTask launch with orientation
   configChanges so rotation does not recreate the activity.
 
+## v1.1.0 graphics & onboarding pass (this release)
+
+- Full visual rework of every 3D element: beveled floor tiles with emissive
+  neon seams, glowing wall caps and accent lines, detailed player robot
+  (body, visor, twin thrusters, antenna beacon) with walk squash-stretch and
+  hover bob, rotating holographic octahedron + light beam on the goal,
+  portal rings (10-segment) with orbiting particles, gravity pads with
+  chevron arrows pointing in the new DOWN direction (rotated per axis),
+  pedestal switches with animating press plates, sliding animated doors,
+  blinking timed gates, rotating platform rotators, and two huge slow
+  rotating background octahedra plus ambient dust particles.
+- Camera: cinematic intro sweep on every level load, death camera shake,
+  win shake + white flash.
+- Onboarding (solve-it-yourself preserved - no auto-solve, no move scripts):
+  - Level intro card with name, world, PAR and wrapped hint; TAP TO BEGIN.
+  - Persistent first-move coach bar on the very first level.
+  - One-time "NEW:" toasts the first time each mechanic appears
+    (phase bridges, portals, gravity pads, cubes, timed gates).
+  - Pulsing highlight on the PHASE button until first use.
+  - HELP screen extended with a full color-coded legend of every entity
+    and every HUD button; reachable from the main menu and the pause menu.
+- Death overlay: TAP TO RETRY quick restart.
+- HUD: run timer (mm:ss), move counter turns amber past PAR.
+- Haptic feedback via Vibrator on push, portal, gravity, phase, death, win.
+
+QA re-run after the pass: `compileDebugKotlin` clean, 8/8 unit tests pass,
+debug + release APKs rebuilt, `apksigner verify` clean on both.
+
 ## Device testing caveat
 
 No emulator/device was available in the build environment, so touch handling,

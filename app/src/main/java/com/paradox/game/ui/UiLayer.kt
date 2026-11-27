@@ -36,6 +36,12 @@ class UiLayer(private val app: GameApp) {
     var transition = 0f
     var pendingScreen: Screen? = null
     var completing = false
+    var helpReturn = Screen.MENU
+    var phaseUsed = false
+    var flashUntil = 0L
+
+    fun onWinFlash() { flashUntil = System.currentTimeMillis() + 520 }
+    fun onPhaseShifted() { phaseUsed = true }
 
     private lateinit var canvas: Canvas
     private val hits = ArrayList<Hit>()
@@ -149,6 +155,11 @@ class UiLayer(private val app: GameApp) {
             Screen.HELP -> drawHelp()
         }
         c.restore()
+        if (System.currentTimeMillis() < flashUntil) {
+            val a = ((flashUntil - System.currentTimeMillis()) / 520f).coerceIn(0f, 1f)
+            pFill.color = withAlpha(0xFFFFFFFF.toInt(), a * 0.8f)
+            canvas.drawRect(0f, 0f, w, h, pFill)
+        }
         val toast = app.toast
         if (toast != null) {
             if (System.currentTimeMillis() > app.toastUntil) app.toast = null
@@ -331,7 +342,7 @@ class UiLayer(private val app: GameApp) {
         val third = bw / 3 - 6f * s
         button("AWARDS", x, y, third, 48f * s, cyan, { goto(Screen.ACHIEVEMENTS) })
         button("SETTINGS", x + third + 8f * s, y, third, 48f * s, cyan, { goto(Screen.SETTINGS) })
-        button("HELP", x + 2 * (third + 8f * s), y, third, 48f * s, cyan, { goto(Screen.HELP) })
+        button("HELP", x + 2 * (third + 8f * s), y, third, 48f * s, cyan, { helpReturn = Screen.MENU; goto(Screen.HELP) })
     }
 
     private fun drawWorlds() {
@@ -383,29 +394,50 @@ class UiLayer(private val app: GameApp) {
         val s = scale()
         val l = app.logic ?: return
         val lvl = app.level ?: return
+        val now = System.currentTimeMillis()
+
         pText.textSize = 15f * s
         pText.color = white
         canvas.drawText(lvl.name, 20f * s, 34f * s, pText)
         pSmall.textSize = 12f * s
-        pSmall.color = cyan
+        val mins = app.elapsed / 60f
+        val secs = app.elapsed % 60f
+        val timer = String.format("%02d:%02d", mins.toInt(), secs.toInt())
+        pSmall.color = 0xFF8FA6C8.toInt()
+        canvas.drawText(timer, 20f * s, 56f * s, pSmall)
         val gDir = when (l.state.gravityIdx) {
             0 -> "G: -Y"; 1 -> "G: +Y"; 2 -> "G: +X"; 3 -> "G: -X"; 4 -> "G: +Z"; else -> "G: -Z"
         }
-        canvas.drawText("MOVES " + l.state.moves + " / PAR " + lvl.par + "    " + gDir, 20f * s, 56f * s, pSmall)
+        val movesCol = if (l.state.moves <= lvl.par) 0xFF35E8FF.toInt() else 0xFFFFB74D.toInt()
+        pSmall.color = movesCol
+        canvas.drawText("MOVES " + l.state.moves + " / PAR " + lvl.par + "    " + gDir, 20f * s, 74f * s, pSmall)
         if (app.mode == Mode.ENDLESS) {
-            canvas.drawText("STREAK " + app.endlessStreak, 20f * s, 76f * s, pSmall)
+            pSmall.color = 0xFF8FA6C8.toInt()
+            canvas.drawText("STREAK " + app.endlessStreak, 20f * s, 92f * s, pSmall)
         }
         if (app.mode == Mode.CHALLENGE) {
             val c = app.challenge
             if (c != null) {
-                canvas.drawText(c.name + " - " + c.desc, 20f * s, 76f * s, pSmall)
-                if (c.kind == 0) canvas.drawText("MAX " + c.limit + " MOVES", 20f * s, 94f * s, pSmall)
+                pSmall.color = violet
+                canvas.drawText(c.name + " - " + c.desc, 20f * s, 92f * s, pSmall)
+                if (c.kind == 0) canvas.drawText("MAX " + c.limit + " MOVES", 20f * s, 108f * s, pSmall)
             }
         }
         button("II", w - 64f * s, 16f * s, 48f * s, 44f * s, white, { goto(Screen.PAUSE) })
         button("RST", w - 124f * s, 16f * s, 52f * s, 44f * s, violet, { app.restart() })
+        var phaseBtn = RectF(0f, 0f, 0f, 0f)
         if (lvl.phases > 1) {
-            button("PHASE", w - 250f * s, 16f * s, 118f * s, 44f * s, 0xFF9C6BFF.toInt(), { app.togglePhase() })
+            phaseBtn = button("PHASE", w - 250f * s, 16f * s, 118f * s, 44f * s, 0xFF9C6BFF.toInt(), { app.togglePhase() })
+            if (!phaseUsed) {
+                val pulse = 0.5f + 0.5f * sin(time * 4f)
+                pStroke.color = 0xFFFFD54F.toInt()
+                pStroke.strokeWidth = (2f + 3f * pulse) * s
+                round(RectF(phaseBtn.left - 5f * s, phaseBtn.top - 5f * s, phaseBtn.right + 5f * s, phaseBtn.bottom + 5f * s), 16f * s, pStroke)
+                pSmall.textSize = 10.5f * s
+                pSmall.color = 0xFFFFD54F.toInt()
+                canvas.drawText("BRIDGES!", phaseBtn.centerX(), phaseBtn.bottom + 16f * s, pSmall.also { it.textAlign = Paint.Align.CENTER })
+                pSmall.textAlign = Paint.Align.LEFT
+            }
         }
         if (app.save.data.settings.hints && !lvl.hint.isEmpty()) {
             button("?", w - 292f * s, 16f * s, 36f * s, 44f * s, cyan, {
@@ -413,6 +445,75 @@ class UiLayer(private val app: GameApp) {
             })
         }
         drawDPad()
+
+        if (app.mode == Mode.CAMPAIGN && lvl.id == "w1l1" && l.state.moves == 0 && (app.save.data.progress["w1l1"] ?: 0) == 0) {
+            val msg = "SWIPE or use the ARROW BUTTONS - reach the white beacon"
+            pSmall.textSize = 13f * s
+            pSmall.color = white
+            val tw = pSmall.measureText(msg) + 40f * s
+            val r = RectF(w / 2 - tw / 2, h - 44f * s, w / 2 + tw / 2, h - 12f * s)
+            pFill.color = 0xCC0E1A2E.toInt()
+            round(r, 9f * s, pFill)
+            pStroke.color = cyan
+            pStroke.strokeWidth = 1.2f * s
+            round(r, 9f * s, pStroke)
+            pSmall.textAlign = Paint.Align.CENTER
+            canvas.drawText(msg, w / 2, h - 22f * s, pSmall)
+            pSmall.textAlign = Paint.Align.LEFT
+        }
+
+        if (now < app.introUntil) {
+            pFill.color = 0xB8050810.toInt()
+            canvas.drawRect(0f, 0f, w, h, pFill)
+            val bw = min(520f * s, w * 0.72f)
+            val r = RectF(w / 2 - bw / 2, h * 0.18f, w / 2 + bw / 2, h * 0.66f)
+            panel(r)
+            pTitle.textSize = 30f * s
+            pTitle.color = white
+            pTitle.textAlign = Paint.Align.CENTER
+            canvas.drawText(lvl.name, w / 2, h * 0.28f, pTitle)
+            pSmall.textSize = 13f * s
+            pSmall.color = cyan
+            canvas.drawText("WORLD " + (lvl.world + 1) + "   PAR " + lvl.par, w / 2, h * 0.35f, pSmall)
+            pText.textSize = 15f * s
+            pText.color = 0xFFB8C6E0.toInt()
+            wrapText(lvl.hint, w / 2, h * 0.44f, bw - 60f * s, 24f * s)
+            pSmall.textSize = 13f * s
+            pSmall.color = 0xFFFFD54F.toInt()
+            canvas.drawText("TAP TO BEGIN", w / 2, h * 0.60f, pSmall.also { if (sin(time * 5f) > 0f) it.alpha = 255 else it.alpha = 120 })
+            pSmall.alpha = 255
+            pTitle.textAlign = Paint.Align.LEFT
+            hits.add(Hit(RectF(0f, 0f, w, h), { app.introUntil = 0 }))
+        } else if (l.state.dead && !l.state.finished) {
+            pFill.color = 0xAA2A0A0A.toInt()
+            canvas.drawRect(0f, 0f, w, h, pFill)
+            pTitle.textSize = 34f * s
+            pTitle.color = 0xFFFF5252.toInt()
+            pTitle.textAlign = Paint.Align.CENTER
+            canvas.drawText("SYSTEM FAILURE", w / 2, h * 0.42f, pTitle)
+            pSmall.textSize = 15f * s
+            pSmall.color = white
+            canvas.drawText("TAP TO RETRY", w / 2, h * 0.53f, pSmall)
+            pTitle.textAlign = Paint.Align.LEFT
+            hits.add(Hit(RectF(0f, 0f, w, h), { tap { app.restart() } }))
+        }
+    }
+
+    private fun wrapText(text: String, cx: Float, y0: Float, maxW: Float, lineH: Float) {
+        val words = text.split(" ")
+        val lines = ArrayList<String>()
+        var cur = StringBuilder()
+        for (wd in words) {
+            val test = if (cur.isEmpty()) wd else cur.toString() + " " + wd
+            if (pText.measureText(test) > maxW && cur.isNotEmpty()) {
+                lines.add(cur.toString()); cur = StringBuilder(wd)
+            } else cur = StringBuilder(test)
+        }
+        if (cur.isNotEmpty()) lines.add(cur.toString())
+        var y = y0
+        pText.textAlign = Paint.Align.CENTER
+        for (ln in lines) { canvas.drawText(ln, cx, y, pText); y += lineH }
+        pText.textAlign = Paint.Align.LEFT
     }
 
     private fun drawDPad() {
@@ -460,11 +561,10 @@ class UiLayer(private val app: GameApp) {
         var y = h * 0.20f
         button("RESUME", x, y, bw, 56f * s, cyan, { goto(Screen.PLAY) }); y += 66f * s
         button("RESTART " + (app.moves).toString() + " MOVES", x, y, bw, 56f * s, cyan, { app.restart(); goto(Screen.PLAY) }); y += 66f * s
-        button("SETTINGS", x, y, bw, 56f * s, violet, { goto(SETTINGS_PREV_ALTERNATE); goto(Screen.SETTINGS) }); y += 66f * s
+        button("SETTINGS", x, y, bw, 56f * s, violet, { goto(Screen.SETTINGS) }); y += 66f * s
+        button("HELP / LEGEND", x, y, bw, 56f * s, cyan, { helpReturn = Screen.PAUSE; goto(Screen.HELP) }); y += 66f * s
         button("QUIT TO MENU", x, y, bw, 56f * s, violet, { goto(Screen.MENU) })
     }
-
-    private val SETTINGS_PREV_ALTERNATE = Screen.PAUSE
 
     private fun dim() {
         pFill.color = 0xB0050810.toInt()
@@ -692,33 +792,56 @@ class UiLayer(private val app: GameApp) {
 
     private fun drawHelp() {
         val s = scale()
-        header("HOW TO PLAY", back = Screen.MENU)
+        header("HOW TO PLAY", back = helpReturn)
+        var y = 96f * s
+        pText.textSize = 13.5f * s
         val lines = listOf(
-            "SWIPE or use the ARROW PAD to move.",
-            "DRAG the scene to rotate the world. Pinch to zoom.",
-            "Reach the WHITE BEACON to finish each level.",
+            "SWIPE or use the ARROW PAD to move. Moves are relative",
+            "to the camera - rotate the view if a direction feels wrong.",
+            "DRAG empty space to orbit, PINCH to zoom.",
+            "Reach the WHITE BEACON. PAR is the target move count.",
             "",
-            "PHASE - shifts reality between states. Flickering",
-            "bridges are solid only in some phases.",
-            "",
-            "GRAVITY PADS - colored tiles rewrite DOWN.",
-            "PORTALS - violet rings transport you instantly.",
-            "CUBES - pushable. Park them on switch plates.",
-            "",
-            "SWITCHES open and close matching gates.",
-            "TIMED GATES blink - cross when glowing.",
-            "",
-            "3 STARS require an optimal line to the beacon.",
-            "Some bridges exist only while you do not look",
-            "at their reflection. Or that is the theory."
+            "BUTTONS: II pauses - RST restarts - ? gives a hint -",
+            "PHASE appears only in levels with illusion bridges."
         )
-        var y = 110f * s
         for (ln in lines) {
-            pText.textSize = 14f * s
-            pText.color = if (ln.startsWith("3 STARS") || ln.startsWith("SWIPE")) cyan else 0xFFB8C6E0.toInt()
-            canvas.drawText(ln, 30f * s, y, pText)
-            y += 30f * s
+            pText.color = if (ln.startsWith("BUTTONS")) 0xFFFFD54F.toInt() else 0xFFB8C6E0.toInt()
+            canvas.drawText(ln, 26f * s, y, pText)
+            y += 26f * s
         }
+        y += 8f * s
+        pTitle.textSize = 15f * s
+        pTitle.color = cyan
+        canvas.drawText("LEGEND", 26f * s, y, pTitle)
+        y += 28f * s
+        val legend = listOf(
+            Pair(0xFFFFFFFF.toInt(), "WHITE BEACON + COLUMN - the goal. Touch its tile."),
+            Pair(0xFFB26BFF.toInt(), "VIOLET RING - portal. Teleports to its twin."),
+            Pair(0xFF35E8FF.toInt(), "ARROW TILE - gravity pad. Arrow = new DOWN."),
+            Pair(0xFF35E8FF.toInt(), "FLICKERING SLAB - phase bridge. Solid only in"),
+            Pair(0xFF35E8FF.toInt(), "the matching phase (use PHASE button)."),
+            Pair(0xFFFFD54F.toInt(), "YELLOW PLATE - switch. Stays on while stood on."),
+            Pair(0xFFFF5252.toInt(), "RED WALL - closed door. Opens while its switch"),
+            Pair(0xFFFF5252.toInt(), "is pressed (park a cube on it to hold it)."),
+            Pair(0xFFFF8A3C.toInt(), "AMBER CUBE - pushable crate. Falls with gravity."),
+            Pair(0xFFFFEB3B.toInt(), "BLINKING YELLOW - timed gate. Cross when open."),
+            Pair(0xFFE040FB.toInt(), "VIOLET PLATFORM - rotator. Turns when its plate"),
+            Pair(0xFFE040FB.toInt(), "is pressed.")
+        )
+        for ((col, txt) in legend) {
+            pFill.color = col
+            canvas.drawCircle(36f * s, y - 5f * s, 6f * s, pFill)
+            pSmall.textSize = 12.5f * s
+            pSmall.color = 0xFFB8C6E0.toInt()
+            canvas.drawText(txt, 52f * s, y, pSmall)
+            y += 24f * s
+        }
+        y += 6f * s
+        pSmall.textSize = 12.5f * s
+        pSmall.color = cyan
+        canvas.drawText("3 STARS need the optimal line. Multiple routes exist", 26f * s, y, pSmall)
+        y += 24f * s
+        canvas.drawText("in many levels - your solution does not have to match", 26f * s, y, pSmall)
     }
 
     private fun drawChallenge() {

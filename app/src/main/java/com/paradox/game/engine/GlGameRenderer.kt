@@ -62,6 +62,42 @@ class MeshBuilder {
         for (p in arrayOf(p0, p1, p2, p0, p2, p3)) v(p.x, p.y, p.z, n.x, n.y, n.z, c.x, c.y, c.z)
     }
 
+    private fun tri(p0: Vec3, p1: Vec3, p2: Vec3, n: Vec3, c: Vec3) {
+        for (p in arrayOf(p0, p1, p2)) v(p.x, p.y, p.z, n.x, n.y, n.z, c.x, c.y, c.z)
+    }
+
+    fun octahedron(cx: Float, cy: Float, cz: Float, r: Float, top: Vec3, side: Vec3) {
+        val apexT = Vec3(cx, cy + r, cz)
+        val apexB = Vec3(cx, cy - r, cz)
+        val pts = arrayOf(
+            Vec3(cx + r, cy, cz), Vec3(cx, cy, cz + r),
+            Vec3(cx - r, cy, cz), Vec3(cx, cy, cz - r)
+        )
+        for (i in 0..3) {
+            val a = pts[i]
+            val b = pts[(i + 1) % 4]
+            val nT = Vec3((a.x + b.x) / 2, cy + r * 0.4f, (a.z + b.z) / 2) - Vec3(cx, cy, cz)
+            tri(apexT, b, a, nT.normalized(), top)
+            val nB = Vec3((a.x + b.x) / 2, cy - r * 0.4f, (a.z + b.z) / 2) - Vec3(cx, cy, cz)
+            tri(apexB, a, b, nB.normalized(), side)
+        }
+    }
+
+    fun ring(cx: Float, cy: Float, cz: Float, r: Float, tube: Float, col: Vec3, segments: Int = 10) {
+        for (i in 0 until segments) {
+            val a = (i.toFloat() / segments) * 2f * Math.PI.toFloat()
+            val px = cx + r * Math.cos(a.toDouble()).toFloat()
+            val pz = cz + r * Math.sin(a.toDouble()).toFloat()
+            cube(px, cy, pz, tube, tube * 0.7f, tube, col, col)
+        }
+    }
+
+    fun chevronX(cx: Float, cy: Float, cz: Float, hy: Float, col: Vec3) {
+        cube(cx + 0.14f, cy, cz, 0.10f, hy, 0.20f, col, col)
+        cube(cx - 0.04f, cy, cz - 0.15f, 0.10f, hy, 0.09f, col, col)
+        cube(cx - 0.04f, cy, cz + 0.15f, 0.10f, hy, 0.09f, col, col)
+    }
+
     private fun quadGrad(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, n: Vec3, cLow: Vec3, cHigh: Vec3) {
         v(p0.x, p0.y, p0.z, n.x, n.y, n.z, cLow.x, cLow.y, cLow.z)
         v(p1.x, p1.y, p1.z, n.x, n.y, n.z, cLow.x, cLow.y, cLow.z)

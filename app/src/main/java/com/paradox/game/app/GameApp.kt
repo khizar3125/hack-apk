@@ -13,6 +13,8 @@ import com.paradox.game.game.LevelSpec
 import com.paradox.game.game.Solver
 import com.paradox.game.render.PlayerAnim
 import com.paradox.game.render.SceneRenderer
+import android.os.VibrationEffect
+import android.os.Vibrator
 import java.util.TimeZone
 
 class Achievement(val id: String, val title: String, val desc: String)
@@ -86,6 +88,17 @@ class GameApp(
     var toast: String? = null
     var toastUntil = 0L
     var newestAchievement: Achievement? = null
+    var introUntil = 0L
+    val seenTutorial = HashSet<String>()
+    private val vibrator = try { activity.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator } catch (_: Exception) { null }
+
+    fun buzz(pattern: LongArray) {
+        try {
+            val v = vibrator ?: return
+            if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            else @Suppress("DEPRECATION") v.vibrate(pattern, -1)
+        } catch (_: Exception) {}
+    }
 
     private var lastCell: Vec3i = Vec3i.Zero
 
@@ -115,6 +128,28 @@ class GameApp(
         save.data.stats.plays++
         save.save()
         computeSolutionAsync(spec)
+        introUntil = System.currentTimeMillis() + 3600
+        maybeTutorialToast(spec)
+    }
+
+    private fun maybeTutorialToast(spec: LevelSpec) {
+        val d = save.data
+        if (mode != Mode.CAMPAIGN) return
+        if (spec.phases > 1 && d.progress[spec.id] == null && seenTutorial.add("phase")) {
+            showToast("NEW: PHASE BUTTON - flickering bridges turn solid in the active phase")
+        }
+        if (spec.portals.isNotEmpty() && d.progress[spec.id] == null && seenTutorial.add("portal")) {
+            showToast("NEW: VIOLET RINGS are portals - step in to teleport")
+        }
+        if (spec.gravityPads.isNotEmpty() && d.progress[spec.id] == null && seenTutorial.add("pad")) {
+            showToast("NEW: COLORED TILES rewrite gravity - the arrow shows the new DOWN")
+        }
+        if (spec.cubes.isNotEmpty() && d.progress[spec.id] == null && seenTutorial.add("cube")) {
+            showToast("NEW: AMBER CUBES can be pushed - park them on switch plates")
+        }
+        if (spec.timedDoors.isNotEmpty() && d.progress[spec.id] == null && seenTutorial.add("timed")) {
+            showToast("NEW: BLINKING GATES open and close - watch the rhythm")
+        }
     }
 
     private fun computeSolutionAsync(spec: LevelSpec) {
@@ -178,6 +213,8 @@ class GameApp(
             deaths++
             save.data.stats.deaths++
             audio.play(AudioEngine.DEATH)
+            scene.shake(0.6f)
+            buzz(longArrayOf(0, 90, 60, 50))
             spawnBurst(st.player.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(1f, 0.3f, 0.3f), 30)
         }
         if (st.finished) onWin()
@@ -187,10 +224,10 @@ class GameApp(
 
     private fun onEvent(kind: String, cell: Vec3i) {
         when (kind) {
-            "push" -> { save.data.stats.pushes++; audio.play(AudioEngine.PUSH); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(1f, 0.7f, 0.3f), 8) }
-            "portal" -> { save.data.stats.portals++; audio.play(AudioEngine.PORTAL); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), SceneRenderer.PORTAL_COL, 26) }
-            "gravity" -> { save.data.stats.pads++; audio.play(AudioEngine.GRAVITY); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(0.3f, 0.9f, 1f), 18) }
-            "phase" -> audio.play(AudioEngine.PHASE)
+            "push" -> { save.data.stats.pushes++; audio.play(AudioEngine.PUSH); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(1f, 0.7f, 0.3f), 8); buzz(longArrayOf(0, 18)) }
+            "portal" -> { save.data.stats.portals++; audio.play(AudioEngine.PORTAL); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), SceneRenderer.PORTAL_COL, 26); buzz(longArrayOf(0, 30, 40, 20)) }
+            "gravity" -> { save.data.stats.pads++; audio.play(AudioEngine.GRAVITY); spawnBurst(cell.toV3() + Vec3(0.5f, 0.5f, 0.5f), Vec3(0.3f, 0.9f, 1f), 18); buzz(longArrayOf(0, 35)) }
+            "phase" -> { audio.play(AudioEngine.PHASE); buzz(longArrayOf(0, 22)); ui.onPhaseShifted() }
         }
     }
 
