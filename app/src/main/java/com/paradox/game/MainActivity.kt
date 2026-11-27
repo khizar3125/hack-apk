@@ -58,7 +58,7 @@ class MainActivity : Activity() {
 
         val renderer = GlGameRenderer()
         renderer.bloomEnabled = save.data.settings.bloom
-        scene = SceneRenderer(renderer)
+        scene = SceneRenderer(renderer, this)
         app = GameApp(this, save, audio, scene)
         overlay = Overlay(this) { if (::app.isInitialized) app.ui else null }
 

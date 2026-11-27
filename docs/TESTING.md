@@ -102,11 +102,42 @@ debug + release APKs rebuilt, `apksigner verify` clean on both.
 QA re-run: 8/8 unit tests, debug + release APKs rebuilt, apksigner verify
 clean on both, aapt badging confirms v1.2.0 (versionCode 3).
 
-Realism note (honest): the game uses a stylized neon-noir look achieved
-with per-pixel lighting, AO, specular, shadows and post-processing - all
-procedural, no image assets. It is not photorealistic; photorealism is not
-achievable without texture assets or a heavier renderer, and per the brief
-every visual is generated in code.
+Realism note (honest): v1.2.0 used a stylized neon-noir look achieved with
+per-pixel lighting, AO, specular, shadows and post-processing - all
+procedural, no image assets.
+
+## v1.3.0 textured assets pass (this release)
+
+- Self-generated PBR-style texture set (no downloads, license-clean):
+  `tools/gen_textures.py` builds brushed-metal floor and wall panels and an
+  amber crate texture - diffuse + Sobel-derived normal maps, with beveled
+  borders, corner rivets, inset panels, scratches and grime. Generated PNGs
+  live in `app/src/main/assets/tex/` (floor/wall 512², crate 256²) and are
+  packed into the APK as verified assets.
+- Engine upgrade: mesh vertex format extended to position + normal + UV +
+  color (stride 44); new `uUseTex`/`uTexD`/`uTexN` uniforms; textured shader
+  branch samples the diffuse map and perturbs the lighting normal via the
+  normal map through an analytic tangent basis; mipmap + REPEAT sampling.
+- Scene texturing: floor tiles, wall blocks and pushable crates are now
+  texture-mapped with normal-mapped lighting; tint still carries the world
+  palette so each world keeps its color identity.
+- Environment: a ring of 18 tall wall-textured pillars with emissive caps
+  now surrounds every level, adding depth and a sense of place behind the
+  fog.
+- Graceful fallback: if textures cannot load (or no Context is available),
+  the engine binds a 1x1 white texture and `uUseTex=0`, reproducing the
+  previous untextured look exactly.
+
+QA re-run: 8/8 unit tests, debug + release APKs rebuilt (versionCode 4,
+versionName 1.3.0), apksigner verify clean on both, `aapt dump badging`
+confirms v1.3.0, `unzip -l` confirms all 6 textures inside both APKs.
+
+Realism note (honest, updated): the look is now physically-inspired textured
+realism (albedo + normal maps, Blinn-Phong specular, AO, contact shadows,
+bloom, tonemap, vignette, grain). It is real-time stylized realism on GLES
+2.0 hardware - not photoreal CGI; that would require photogrammetry assets
+and a PBR deferred renderer, which is out of scope for a zero-dependency,
+offline APK of ~1 MB.
 
 ## Device testing caveat
 

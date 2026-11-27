@@ -1,5 +1,9 @@
 package com.paradox.game.render
 
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.opengl.GLES20
+import android.opengl.GLUtils
 import com.paradox.game.engine.GlGameRenderer
 import com.paradox.game.engine.Mat4
 import com.paradox.game.engine.Mesh
@@ -16,7 +20,7 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-class SceneRenderer(val gl: GlGameRenderer) {
+class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null) {
 
     var yaw = 0.7f
     var pitch = 0.95f
@@ -49,11 +53,21 @@ class SceneRenderer(val gl: GlGameRenderer) {
     private var bgOcta1: Mesh? = null
     private var bgOcta2: Mesh? = null
     private var goalPlate: Mesh? = null
+    private var pillarMesh: Mesh? = null
+    private var pillarGlow: Mesh? = null
+
+    private var texFloorD = 0
+    private var texFloorN = 0
+    private var texWallD = 0
+    private var texWallN = 0
+    private var texCubeD = 0
+    private var texCubeN = 0
+    private var texturesReady = false
 
     private var gfxEnabled = true
     var time = 0f
 
-    private class Entity(val mesh: Mesh, val cell: Vec3i, val kind: Int, val param: Int, val rotY: Float = 0f)
+    private class Entity(val mesh: Mesh, val cell: Vec3i, val kind: Int, val param: Int, val rotY: Float = 0f, val glow: Mesh? = null)
 
     private val tints = arrayOf(
         arrayOf(Vec3(0.14f, 0.19f, 0.30f), Vec3(0.30f, 0.45f, 0.62f)),
@@ -81,14 +95,14 @@ class SceneRenderer(val gl: GlGameRenderer) {
         for (c in s.solids) {
             val cx = c.x + 0.5f; val cy = c.y + 0.5f; val cz = c.z + 0.5f
             if (c.y < 0) {
-                tb.cube(cx, cy - 0.03f, cz, 0.49f, 0.47f, 0.49f, Vec3(0.95f, 0.97f, 1f), Vec3(0.8f, 0.85f, 0.95f))
+                tb.texCube(cx, cy - 0.03f, cz, 0.49f, 0.47f, 0.49f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f))
                 val f = 0.44f
                 sb.cube(cx, c.y + 0.94f, cz - f, 0.44f, 0.035f, 0.045f, SEAM, SEAM)
                 sb.cube(cx, c.y + 0.94f, cz + f, 0.44f, 0.035f, 0.045f, SEAM, SEAM)
                 sb.cube(cx - f, c.y + 0.94f, cz, 0.045f, 0.035f, 0.44f, SEAM, SEAM)
                 sb.cube(cx + f, c.y + 0.94f, cz, 0.045f, 0.035f, 0.44f, SEAM, SEAM)
             } else {
-                wb.cube(cx, cy, cz, 0.48f, 0.5f, 0.48f, Vec3(0.9f, 0.9f, 1f), Vec3(0.75f, 0.78f, 0.92f))
+                wb.texCube(cx, cy, cz, 0.48f, 0.5f, 0.48f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f))
                 wg.cube(cx, c.y + 1.0f, cz, 0.40f, 0.03f, 0.40f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f))
                 wg.cube(cx, c.y + 0.45f, cz, 0.42f, 0.015f, 0.42f, GLOWLINE, GLOWLINE)
             }
@@ -106,6 +120,21 @@ class SceneRenderer(val gl: GlGameRenderer) {
         seamMesh = sb.build()
         wallMesh = wb.build()
         wallGlowMesh = wg.build()
+
+        val plb = MeshBuilder()
+        val plg = MeshBuilder()
+        val prRadius = span / 2f + 6.5f
+        val prCount = 18
+        for (i in 0 until prCount) {
+            val a = i.toFloat() / prCount * 6.2832f
+            val px = centerX + prRadius * kotlin.math.cos(a)
+            val pz = centerZ + prRadius * kotlin.math.sin(a)
+            val ph = 5f + (i % 4) * 1.7f + (if (i % 2 == 0) 0.8f else 0f)
+            plb.texCube(px, minY - 1f + ph / 2f, pz, 0.55f, ph / 2f, 0.55f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f), ph / 1.6f)
+            plg.cube(px, minY - 1f + ph + 0.06f, pz, 0.30f, 0.05f, 0.30f, Vec3(0.4f, 0.9f, 1.1f), Vec3(0.3f, 0.7f, 0.9f))
+        }
+        pillarMesh = plb.build()
+        pillarGlow = plg.build()
 
         entities = ArrayList()
         val pr = MeshBuilder()
@@ -151,10 +180,11 @@ class SceneRenderer(val gl: GlGameRenderer) {
 
         for (c in s.cubes) {
             val mb = MeshBuilder()
-            mb.cube(0f, 0f, 0f, 0.40f, 0.40f, 0.40f, CUBE_TOP, CUBE_COL * 0.85f)
-            mb.cube(0f, 0.41f, 0f, 0.28f, 0.03f, 0.28f, Vec3(1f, 0.9f, 0.5f), Vec3(1f, 0.85f, 0.4f))
-            mb.cube(0f, 0f, 0f, 0.16f, 0.17f, 0.16f, CUBE_COL * 1.5f, CUBE_COL * 1.2f)
-            entities.add(Entity(mb.build(), c, KIND_CUBE, 0))
+            mb.texCube(0f, 0f, 0f, 0.40f, 0.40f, 0.40f, Vec3(1f, 1f, 1f), Vec3(1f, 1f, 1f))
+            val gb = MeshBuilder()
+            gb.cube(0f, 0.41f, 0f, 0.28f, 0.03f, 0.28f, Vec3(1f, 0.9f, 0.5f), Vec3(1f, 0.85f, 0.4f))
+            gb.cube(0f, 0f, 0f, 0.16f, 0.17f, 0.16f, CUBE_COL * 1.5f, CUBE_COL * 1.2f)
+            entities.add(Entity(mb.build(), c, KIND_CUBE, 0, glow = gb.build()))
         }
 
         for (r in s.rotators) {
@@ -284,9 +314,43 @@ class SceneRenderer(val gl: GlGameRenderer) {
         ))
     }
 
+    private fun loadTex(name: String): Int {
+        val ctx = context ?: return 0
+        return try {
+            val tex = IntArray(1)
+            GLES20.glGenTextures(1, tex, 0)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex[0])
+            ctx.assets.open("tex/$name").use { ins ->
+                val bmp = BitmapFactory.decodeStream(ins)
+                GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0)
+                bmp.recycle()
+            }
+            GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT)
+            tex[0]
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun ensureTextures() {
+        if (texturesReady || context == null) return
+        texturesReady = true
+        texFloorD = loadTex("floor_d.png")
+        texFloorN = loadTex("floor_n.png")
+        texWallD = loadTex("wall_d.png")
+        texWallN = loadTex("wall_n.png")
+        texCubeD = loadTex("cube_d.png")
+        texCubeN = loadTex("cube_n.png")
+    }
+
     private fun draw(st: GameState, dt: Float, anim: PlayerAnim) {
         val s = spec ?: return
         val wl = logic ?: return
+        ensureTextures()
         val pal = tints[s.tint % tints.size]
         gl.beginScene()
         gl.clearColor = Vec3(0.012f, 0.016f, 0.04f)
@@ -302,10 +366,12 @@ class SceneRenderer(val gl: GlGameRenderer) {
             gl.drawMesh(it, m, Vec3(1f, 1f, 1f), 0.04f)
         }
 
-        tileMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[0], 0.0f) }
+        tileMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[0] * 4.5f, 0.0f, texFloorD, texFloorN) }
         seamMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.85f) }
-        wallMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[1] * 0.9f, 0.05f) }
+        wallMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[1] * 3.8f, 0.05f, texWallD, texWallN) }
         wallGlowMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.7f) }
+        pillarMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[1] * 3.0f, 0.02f, texWallD, texWallN) }
+        pillarGlow?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.75f) }
 
         val shadowCol = Vec3(0.012f, 0.016f, 0.028f)
         if (!st.dead) {
@@ -356,7 +422,9 @@ class SceneRenderer(val gl: GlGameRenderer) {
                     val idx = st.cubes.indexOf(e.cell)
                     if (idx >= 0) {
                         val bob = if (!st.dead) 0.02f * sin(time * 3f + idx) else 0f
-                        gl.drawMesh(e.mesh, Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0.42f + bob, 0.5f)), Vec3(1f, 1f, 1f), 0.25f)
+                        val m = Mat4.translation(e.cell.toV3() + Vec3(0.5f, 0.42f + bob, 0.5f))
+                        gl.drawMesh(e.mesh, m, Vec3(1.5f, 1.25f, 0.85f), 0.12f, texCubeD, texCubeN)
+                        e.glow?.let { gl.drawMesh(it, m, Vec3(1f, 1f, 1f), 0.85f) }
                     }
                 }
                 KIND_ROTATOR -> {

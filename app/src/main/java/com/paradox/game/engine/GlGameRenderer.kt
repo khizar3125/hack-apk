@@ -41,7 +41,7 @@ object GLUtil {
 }
 
 class Mesh(vertices: FloatArray) {
-    val count = vertices.size / 9
+    val count = vertices.size / 11
     val buffer: FloatBuffer = ByteBuffer
         .allocateDirect(vertices.size * 4)
         .order(ByteOrder.nativeOrder())
@@ -53,9 +53,35 @@ class MeshBuilder {
     private val verts = ArrayList<Float>(2048)
 
     fun v(x: Float, y: Float, z: Float, nx: Float, ny: Float, nz: Float, r: Float, g: Float, b: Float) {
+        v(x, y, z, nx, ny, nz, 0f, 0f, r, g, b)
+    }
+
+    fun v(x: Float, y: Float, z: Float, nx: Float, ny: Float, nz: Float, u: Float, tv: Float, r: Float, g: Float, b: Float) {
         verts += x; verts += y; verts += z
         verts += nx; verts += ny; verts += nz
+        verts += u; verts += tv
         verts += r; verts += g; verts += b
+    }
+
+    fun texQuad(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, n: Vec3, c: Vec3, u0: Float, v0: Float, u1: Float, v1: Float) {
+        v(p0.x, p0.y, p0.z, n.x, n.y, n.z, u0, v0, c.x, c.y, c.z)
+        v(p1.x, p1.y, p1.z, n.x, n.y, n.z, u1, v0, c.x, c.y, c.z)
+        v(p2.x, p2.y, p2.z, n.x, n.y, n.z, u1, v1, c.x, c.y, c.z)
+        v(p0.x, p0.y, p0.z, n.x, n.y, n.z, u0, v0, c.x, c.y, c.z)
+        v(p2.x, p2.y, p2.z, n.x, n.y, n.z, u1, v1, c.x, c.y, c.z)
+        v(p3.x, p3.y, p3.z, n.x, n.y, n.z, u0, v1, c.x, c.y, c.z)
+    }
+
+    fun texCube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, top: Vec3, side: Vec3, rep: Float = 1f) {
+        val x0 = cx - hx; val x1 = cx + hx
+        val y0 = cy - hy; val y1 = cy + hy
+        val z0 = cz - hz; val z1 = cz + hz
+        texQuad(Vec3(x0, y1, z0), Vec3(x1, y1, z0), Vec3(x1, y1, z1), Vec3(x0, y1, z1), Vec3(0f, 1f, 0f), top, 0f, 0f, rep, rep)
+        texQuad(Vec3(x0, y0, z1), Vec3(x1, y0, z1), Vec3(x1, y1, z1), Vec3(x0, y1, z1), Vec3(0f, 0f, 1f), side, 0f, 0f, rep, rep)
+        texQuad(Vec3(x1, y0, z0), Vec3(x0, y0, z0), Vec3(x0, y1, z0), Vec3(x1, y1, z0), Vec3(0f, 0f, -1f), side, 0f, 0f, rep, rep)
+        texQuad(Vec3(x1, y0, z1), Vec3(x1, y0, z0), Vec3(x1, y1, z0), Vec3(x1, y1, z1), Vec3(1f, 0f, 0f), side, 0f, 0f, rep, rep)
+        texQuad(Vec3(x0, y0, z0), Vec3(x0, y0, z1), Vec3(x0, y1, z1), Vec3(x0, y1, z0), Vec3(-1f, 0f, 0f), side, 0f, 0f, rep, rep)
+        texQuad(Vec3(x0, y0, z0), Vec3(x1, y0, z0), Vec3(x1, y0, z1), Vec3(x0, y0, z1), Vec3(0f, -1f, 0f), side * 0.5f, 0f, 0f, rep, rep)
     }
 
     private fun quad(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, n: Vec3, c: Vec3) {
@@ -157,6 +183,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
     private var uSolidVP = 0; private var uSolidModel = 0; private var uSolidTint = 0
     private var uSolidEmissive = 0; private var uSolidEye = 0
     private var uSolidFogColor = 0; private var uSolidFogNear = 0; private var uSolidFogFar = 0
+    private var uSolidUseTex = 0; private var uSolidTexD = 0; private var uSolidTexN = 0
     private var uParticleVP = 0
     private var uBlurDir = 0
     private var uCompScene = 0; private var uCompBloom = 0; private var uCompIntensity = 0
@@ -167,6 +194,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
     private var fullscreenBuffer: FloatBuffer? = null
 
     private var unitCube: Mesh? = null
+    var whiteTex = 0
 
     private val particleBuffer: FloatBuffer = ByteBuffer.allocateDirect(2048 * 7 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
     private var particleCount = 0
@@ -217,6 +245,10 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         uSolidFogColor = GLES20.glGetUniformLocation(solidProg, "uFogColor")
         uSolidFogNear = GLES20.glGetUniformLocation(solidProg, "uFogNear")
         uSolidFogFar = GLES20.glGetUniformLocation(solidProg, "uFogFar")
+        uSolidUseTex = GLES20.glGetUniformLocation(solidProg, "uUseTex")
+        uSolidTexD = GLES20.glGetUniformLocation(solidProg, "uTexD")
+        uSolidTexN = GLES20.glGetUniformLocation(solidProg, "uTexN")
+        whiteTex = createSolidTexture(255, 255, 255, 255)
         uParticleVP = GLES20.glGetUniformLocation(particleProg, "uVP")
         uCompScene = GLES20.glGetUniformLocation(compositeProg, "uScene")
         uCompBloom = GLES20.glGetUniformLocation(compositeProg, "uBloom")
@@ -328,21 +360,51 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         GLES20.glUniform1f(uSolidFogFar, fogFar)
     }
 
+    fun createSolidTexture(r: Int, g: Int, b: Int, a: Int): Int {
+        val tex = IntArray(1)
+        GLES20.glGenTextures(1, tex, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex[0])
+        val px = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder())
+        px.put(r.toByte()); px.put(g.toByte()); px.put(b.toByte()); px.put(a.toByte())
+        px.position(0)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, px)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT)
+        return tex[0]
+    }
+
     fun drawMesh(mesh: Mesh, model: Mat4, tint: Vec3, emissive: Float) {
+        drawMesh(mesh, model, tint, emissive, 0, 0)
+    }
+
+    fun drawMesh(mesh: Mesh, model: Mat4, tint: Vec3, emissive: Float, texD: Int, texN: Int) {
         GLES20.glUseProgram(solidProg)
         mesh.buffer.position(0)
-        GLES20.glVertexAttribPointer(0, 3, GLES20.GL_FLOAT, false, 36, mesh.buffer)
+        GLES20.glVertexAttribPointer(0, 3, GLES20.GL_FLOAT, false, 44, mesh.buffer)
         mesh.buffer.position(3)
-        GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 36, mesh.buffer)
+        GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 44, mesh.buffer)
         mesh.buffer.position(6)
-        GLES20.glVertexAttribPointer(2, 3, GLES20.GL_FLOAT, false, 36, mesh.buffer)
+        GLES20.glVertexAttribPointer(3, 2, GLES20.GL_FLOAT, false, 44, mesh.buffer)
+        mesh.buffer.position(8)
+        GLES20.glVertexAttribPointer(2, 3, GLES20.GL_FLOAT, false, 44, mesh.buffer)
         GLES20.glEnableVertexAttribArray(0)
         GLES20.glEnableVertexAttribArray(1)
         GLES20.glEnableVertexAttribArray(2)
+        GLES20.glEnableVertexAttribArray(3)
         GLES20.glUniformMatrix4fv(uSolidModel, 1, false, model.m, 0)
         GLES20.glUniform3f(uSolidTint, tint.x, tint.y, tint.z)
         GLES20.glUniform1f(uSolidEmissive, emissive)
+        GLES20.glUniform1f(uSolidUseTex, if (texD != 0) 1f else 0f)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, if (texD != 0) texD else whiteTex)
+        GLES20.glUniform1i(uSolidTexD, 0)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, if (texN != 0) texN else whiteTex)
+        GLES20.glUniform1i(uSolidTexN, 1)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, mesh.count)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
     }
 
     fun drawCube(center: Vec3, size: Vec3, rotationY: Float, tint: Vec3, emissive: Float, mesh: Mesh? = null) {
@@ -387,17 +449,20 @@ class GlGameRenderer : GLSurfaceView.Renderer {
             attribute vec3 aPos;
             attribute vec3 aNormal;
             attribute vec3 aColor;
+            attribute vec2 aUV;
             uniform mat4 uVP;
             uniform mat4 uModel;
             varying vec3 vNormal;
             varying vec3 vColor;
             varying vec3 vWorld;
+            varying vec2 vUV;
             void main() {
                 vec4 world = uModel * vec4(aPos, 1.0);
                 vWorld = world.xyz;
                 mat3 nm = mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz);
                 vNormal = normalize(nm * aNormal);
                 vColor = aColor;
+                vUV = aUV;
                 gl_Position = uVP * world;
             }
         """
@@ -406,12 +471,16 @@ class GlGameRenderer : GLSurfaceView.Renderer {
             varying vec3 vNormal;
             varying vec3 vColor;
             varying vec3 vWorld;
+            varying vec2 vUV;
             uniform vec3 uTint;
             uniform float uEmissive;
             uniform vec3 uEye;
             uniform vec3 uFogColor;
             uniform float uFogNear;
             uniform float uFogFar;
+            uniform float uUseTex;
+            uniform sampler2D uTexD;
+            uniform sampler2D uTexN;
             float hash(vec3 p) {
                 p = fract(p * 0.3183099 + vec3(0.1, 0.17, 0.13));
                 p *= 17.0;
@@ -419,26 +488,38 @@ class GlGameRenderer : GLSurfaceView.Renderer {
             }
             void main() {
                 vec3 n = normalize(vNormal);
+                vec3 nS = n;
+                vec3 base = vColor * uTint;
+                float gloss = 42.0;
+                float specK = 0.55;
+                if (uUseTex > 0.5) {
+                    vec3 texC = texture2D(uTexD, vUV).rgb;
+                    base = texC * uTint * vColor;
+                    vec3 nm = texture2D(uTexN, vUV).xyz * 2.0 - 1.0;
+                    vec3 t = normalize(abs(n.y) > 0.9 ? cross(vec3(0.0, 0.0, 1.0), n) : cross(vec3(0.0, 1.0, 0.0), n));
+                    vec3 bt = cross(n, t);
+                    nS = normalize(t * nm.x + bt * nm.y + n * nm.z);
+                    gloss = 30.0;
+                    specK = 0.8;
+                }
                 vec3 l1 = normalize(vec3(0.45, 1.0, 0.3));
                 vec3 l2 = normalize(vec3(-0.7, 0.25, -0.6));
                 vec3 l3 = normalize(vec3(0.2, -0.4, -0.9));
-                float d1 = max(dot(n, l1), 0.0);
-                float d2 = max(dot(n, l2), 0.0);
-                float d3 = max(dot(n, l3), 0.0);
+                float d1 = max(dot(nS, l1), 0.0);
+                float d2 = max(dot(nS, l2), 0.0);
+                float d3 = max(dot(nS, l3), 0.0);
                 vec3 viewDir = normalize(uEye - vWorld);
-                float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
-                vec3 base = vColor * uTint;
                 float ao = clamp(vWorld.y * 0.06 + 0.82, 0.75, 1.0);
                 vec3 lit = base * (0.20 + d1 * 0.85 + d2 * 0.30 + d3 * 0.12) * ao;
                 vec3 h1 = normalize(l1 + viewDir);
-                float spec = pow(max(dot(n, h1), 0.0), 42.0) * 0.55;
+                float spec = pow(max(dot(nS, h1), 0.0), gloss) * specK;
                 vec3 h2 = normalize(l2 + viewDir);
-                spec += pow(max(dot(n, h2), 0.0), 24.0) * 0.22 * vec3(0.6, 0.35, 1.0);
+                spec += pow(max(dot(nS, h2), 0.0), gloss * 0.57) * 0.22 * vec3(0.6, 0.35, 1.0);
                 float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
                 vec3 rimC = rim * vec3(0.11, 0.34, 0.46);
                 vec3 col = mix(lit, base * 1.15, uEmissive) + rimC * (1.0 - uEmissive * 0.45);
                 col += mix(spec, base * spec * 2.2, 0.5) * (1.0 - uEmissive * 0.6);
-                if (uEmissive < 0.02 && n.y > 0.9) {
+                if (uEmissive < 0.02 && n.y > 0.9 && uUseTex < 0.5) {
                     vec2 f = abs(fract(vWorld.xz) - 0.5);
                     float line = smoothstep(0.42, 0.5, max(f.x, f.y));
                     col *= 1.0 - line * 0.22;
