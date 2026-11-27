@@ -6,3 +6,4 @@ local.properties
 .idea/
 captures/
 .externalNativeBuild/
+__pycache__/
