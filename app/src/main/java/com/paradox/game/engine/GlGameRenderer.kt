@@ -225,14 +225,13 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         solidProg = GLUtil.link(
             GLUtil.compileShader(GLES20.GL_VERTEX_SHADER, SOLID_VS),
             GLUtil.compileShader(GLES20.GL_FRAGMENT_SHADER, SOLID_FS),
-            mapOf("aPos" to 0, "aNormal" to 1, "aColor" to 2)
+            mapOf("aPos" to 0, "aNormal" to 1, "aColor" to 2, "aUV" to 3)
         )
         particleProg = GLUtil.link(
             GLUtil.compileShader(GLES20.GL_VERTEX_SHADER, PARTICLE_VS),
             GLUtil.compileShader(GLES20.GL_FRAGMENT_SHADER, PARTICLE_FS),
             mapOf("aPos" to 0, "aColor" to 1, "aSize" to 2)
         )
-        val quadVs = GLUtil.compileShader(GLES20.GL_VERTEX_SHADER, QUAD_VS)
         val quadVs2 = GLUtil.compileShader(GLES20.GL_VERTEX_SHADER, QUAD_VS)
         blurYProg = GLUtil.link(quadVs2, GLUtil.compileShader(GLES20.GL_FRAGMENT_SHADER, BLOOM_FS), mapOf("aPos" to 0))
         compositeProg = GLUtil.link(quadVs2, GLUtil.compileShader(GLES20.GL_FRAGMENT_SHADER, COMPOSITE_FS), mapOf("aPos" to 0))
@@ -347,6 +346,9 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         fullscreenBuffer?.position(0)
         GLES20.glVertexAttribPointer(0, 3, GLES20.GL_FLOAT, false, 0, fullscreenBuffer)
         GLES20.glEnableVertexAttribArray(0)
+        GLES20.glDisableVertexAttribArray(1)
+        GLES20.glDisableVertexAttribArray(2)
+        GLES20.glDisableVertexAttribArray(3)
     }
 
     fun beginScene() {
@@ -438,6 +440,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         GLES20.glEnableVertexAttribArray(0)
         GLES20.glEnableVertexAttribArray(1)
         GLES20.glEnableVertexAttribArray(2)
+        GLES20.glDisableVertexAttribArray(3)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE)
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, particleCount)
@@ -496,7 +499,13 @@ class GlGameRenderer : GLSurfaceView.Renderer {
                     vec3 texC = texture2D(uTexD, vUV).rgb;
                     base = texC * uTint * vColor;
                     vec3 nm = texture2D(uTexN, vUV).xyz * 2.0 - 1.0;
-                    vec3 t = normalize(abs(n.y) > 0.9 ? cross(vec3(0.0, 0.0, 1.0), n) : cross(vec3(0.0, 1.0, 0.0), n));
+                    vec3 t;
+                    if (abs(n.y) > 0.9) {
+                        t = cross(vec3(0.0, 0.0, 1.0), n);
+                    } else {
+                        t = cross(vec3(0.0, 1.0, 0.0), n);
+                    }
+                    t = normalize(t);
                     vec3 bt = cross(n, t);
                     nS = normalize(t * nm.x + bt * nm.y + n * nm.z);
                     gloss = 30.0;
@@ -512,7 +521,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
                 float ao = clamp(vWorld.y * 0.06 + 0.82, 0.75, 1.0);
                 vec3 lit = base * (0.20 + d1 * 0.85 + d2 * 0.30 + d3 * 0.12) * ao;
                 vec3 h1 = normalize(l1 + viewDir);
-                float spec = pow(max(dot(nS, h1), 0.0), gloss) * specK;
+                vec3 spec = vec3(pow(max(dot(nS, h1), 0.0), gloss) * specK);
                 vec3 h2 = normalize(l2 + viewDir);
                 spec += pow(max(dot(nS, h2), 0.0), gloss * 0.57) * 0.22 * vec3(0.6, 0.35, 1.0);
                 float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
@@ -523,7 +532,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
                     vec2 f = abs(fract(vWorld.xz) - 0.5);
                     float line = smoothstep(0.42, 0.5, max(f.x, f.y));
                     col *= 1.0 - line * 0.22;
-                    float grain = hash(floor(vWorld.xz * 2.0));
+                    float grain = hash(vec3(floor(vWorld.xz * 2.0), 0.0));
                     col *= 0.94 + grain * 0.09;
                 }
                 float dist = length(uEye - vWorld);

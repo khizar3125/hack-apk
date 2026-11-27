@@ -26,6 +26,9 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           chmod +x gradlew
 
+      - name: Validate shaders (GLSL ES 1.00)
+        run: python3 tools/check_shaders.py
+
       - name: Build and test
         run: ./gradlew testDebugUnitTest assembleDebug assembleRelease --no-daemon
 

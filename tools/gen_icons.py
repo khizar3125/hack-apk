@@ -1,4 +1,4 @@
-import zlib, struct, math, os
+import zlib, struct, math, os, random
 
 def write_png(path, w, h, pix):
     raw = b''.join(b'\x00' + bytes(pix[y*w*4:(y+1)*w*4]) for y in range(h))
@@ -10,112 +10,236 @@ def write_png(path, w, h, pix):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as f: f.write(png)
 
-def render(size, rounded=True):
-    W = H = size
-    px = bytearray(W*H*4)
-    s = size / 512.0
-    cx, cy = W/2, H/2 + 14*s
-    R = 118*s
+CYAN = (34, 217, 245)
+VIOLET = (176, 92, 255)
+ICE = (232, 242, 255)
 
-    def setp(x, y, r, g, b, a):
-        if 0 <= x < W and 0 <= y < H:
-            i = (y*W+x)*4
-            ia = px[i+3]/255.0
-            na = a + ia*(1-a)
-            if na > 0:
-                px[i]   = int((r*a + px[i]*ia*(1-a))/na)
-                px[i+1] = int((g*a + px[i+1]*ia*(1-a))/na)
-                px[i+2] = int((b*a + px[i+2]*ia*(1-a))/na)
-                px[i+3] = int(na*255)
+def point_in_poly(p, poly):
+    x, y = p; inside = False; j = len(poly)-1
+    for i in range(len(poly)):
+        xi, yi = poly[i]; xj, yj = poly[j]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi:
+            inside = not inside
+        j = i
+    return inside
 
+def signed_area(poly):
+    s = 0.0
+    for i in range(len(poly)):
+        x0, y0 = poly[i]; x1, y1 = poly[(i+1) % len(poly)]
+        s += x0*y1 - x1*y0
+    return s / 2.0
+
+def bar_faces(hexagon):
+    for i in range(3):
+        a, b = i, (i + 3) % 6
+        mid = ((hexagon[a][0]+hexagon[b][0])/2, (hexagon[a][1]+hexagon[b][1])/2)
+        if not point_in_poly(mid, hexagon):
+            continue
+        fa = [hexagon[a], hexagon[(a+1) % 6], hexagon[(a+2) % 6], hexagon[b]]
+        fb = [hexagon[b], hexagon[(b+1) % 6], hexagon[(b+2) % 6], hexagon[a]]
+        ca = (sum(p[0] for p in fa)/4, sum(p[1] for p in fa)/4)
+        cb = (sum(p[0] for p in fb)/4, sum(p[1] for p in fb)/4)
+        sa = -ca[1]*0.8 - ca[0]*0.2
+        sb = -cb[1]*0.8 - cb[0]*0.2
+        bright, dark = (fa, fb) if sa > sb else (fb, fa)
+        return bright, dark
+    return None, None
+
+def fill_convex(buf, W, H, poly, col, alpha=1.0):
+    n = len(poly)
+    ys = [p[1] for p in poly]
+    y0 = max(0, int(min(ys))); y1 = min(H-1, int(max(ys))+1)
+    for y in range(y0, y1+1):
+        yc = y + 0.5
+        xs = []
+        j = n - 1
+        for i in range(n):
+            xi, yi = poly[i]; xj, yj = poly[j]
+            if (yi > yc) != (yj > yc):
+                xs.append((xj - xi) * (yc - yi) / (yj - yi) + xi)
+            j = i
+        xs.sort()
+        for k in range(0, len(xs) - 1, 2):
+            xa = max(0, int(math.ceil(xs[k] - 0.5)))
+            xb = min(W-1, int(math.floor(xs[k+1] - 0.5)))
+            for x in range(xa, xb+1):
+                blend(buf, W, x, y, col, alpha)
+
+def blend(buf, W, x, y, col, a):
+    i4 = (y*W+x)*4
+    ia = buf[i4+3]/255.0
+    na = a + ia*(1-a)
+    if na > 0:
+        for k in range(3):
+            buf[i4+k] = int((col[k]*a + buf[i4+k]*ia*(1-a))/na)
+        buf[i4+3] = int(na*255)
+
+def stroke_poly(buf, W, H, poly, col, width, alpha=1.0):
+    n = len(poly)
+    for i in range(n):
+        p, q = poly[i], poly[(i+1) % n]
+        dx, dy = q[0]-p[0], q[1]-p[1]
+        L = math.hypot(dx, dy) or 1.0
+        ux, uy = dx/L, dy/L
+        x0 = max(0, int(min(p[0], q[0])-width-1)); x1 = min(W-1, int(max(p[0], q[0])+width+1))
+        y0 = max(0, int(min(p[1], q[1])-width-1)); y1 = min(H-1, int(max(p[1], q[1])+width+1))
+        for y in range(y0, y1+1):
+            for x in range(x0, x1+1):
+                px_, py_ = x+0.5-p[0], y+0.5-p[1]
+                t = px_*ux + py_*uy
+                if -0.5 <= t <= L+0.5:
+                    d = abs(px_*-uy + py_*ux)
+                    if d <= width:
+                        a = alpha * (1.0 - d/width)**0.7
+                        if a > 0.01:
+                            blend(buf, W, x, y, col, a)
+
+def draw_glow(buf, W, H, cx, cy, radius, col, strength):
+    x0 = max(0, int(cx-radius)); x1 = min(W-1, int(cx+radius))
+    y0 = max(0, int(cy-radius)); y1 = min(H-1, int(cy+radius))
+    for y in range(y0, y1+1):
+        for x in range(x0, x1+1):
+            d = math.hypot(x+0.5-cx, y+0.5-cy)
+            if d < radius:
+                a = strength * (1.0 - d/radius)**2.4
+                if a > 0.003:
+                    blend(buf, W, x, y, col, a)
+
+def draw_bg(buf, W, H):
+    cxc, cyc = W/2, H/2
+    rnd = random.Random(1337)
+    stars = [(rnd.uniform(0, W), rnd.uniform(0, H), rnd.uniform(0.15, 0.7)) for _ in range(90)]
+    maxd = math.hypot(cxc, cyc)
     for y in range(H):
         for x in range(W):
-            bg = (5, 7, 13, 255)
-            base = bg
-            if rounded:
-                bx, by = (x - W/2)/ (W/2-14*s), (y - H/2)/(H/2-14*s)
-                d = (bx*bx+by*by)**0.5
-                if d > 1.18: base = (0,0,0,0)
-                elif d > 1.0:
-                    t = 1.0 - (d-1.0)/0.18
-                    r0,g0,b0 = base[:3]
-                    base = (int(r0), int(g0), int(b0), int(255*t))
-            i = (y*W+x)*4
-            px[i],px[i+1],px[i+2],px[i+3] = base
-
-    # Penrose triangle: three bars, impossible triangle vertices
-    def vsub(a,b): return (a[0]-b[0], a[1]-b[1])
-    tri = [(cx, cy-R), (cx-104*s, cy+74*s), (cx+104*s, cy+74*s)]
-    bw = 30*s
-    def draw_bar(p1, p2, color, width, alpha=1.0, glow=0):
-        vx, vy = vsub(p2, p1)
-        L = math.hypot(vx, vy) or 1
-        vx, vy = vx/L, vy/L
-        nx, ny = -vy, vx
-        hw = width/2
+            d = math.hypot(x+0.5-cxc, y+0.5-cyc) / maxd
+            r = 14 + 26 * (1-d)**1.6
+            g = 20 + 40 * (1-d)**1.6
+            b = 34 + 70 * (1-d)**1.6
+            vig = 1.0 - 0.42 * d**2.2
+            i4 = (y*W+x)*4
+            buf[i4] = int(r*vig); buf[i4+1] = int(g*vig); buf[i4+2] = int(b*vig); buf[i4+3] = 255
+    for sx, sy, sa in stars:
+        xi, yi = int(sx), int(sy)
+        if 0 <= xi < W and 0 <= yi < H:
+            i4 = (yi*W+xi)*4
+            v = int(255*sa)
+            buf[i4] = min(255, buf[i4]+v); buf[i4+1] = min(255, buf[i4+1]+v); buf[i4+2] = min(255, buf[i4+2]+v)
+    step = W / 9.0
+    gcol = (70, 110, 160)
+    for k in range(1, 9):
+        x = int(k*step)
         for y in range(H):
-            for x in range(W):
-                px_, py_ = x-p1[0], y-p1[1]
-                t = px_*vx + py_*vy
-                if -glow <= t <= L+glow:
-                    d = abs(px_*nx + py_*ny)
-                    if d <= hw + glow:
-                        core = max(0.0, 1.0 - max(0.0, d-hw)/max(glow,0.001)) if d > hw else 1.0
-                        a = alpha * core
-                        if glow > 0 and d > hw:
-                            a *= 0.16
-                        r,g,b = color
-                        setp(x, y, r, g, b, a)
-    draw_bar(tri[0], tri[1], (0,230,255), bw, 1.0)          # cyan left bar
-    draw_bar(tri[1], tri[2], (190,80,255), bw, 1.0)          # violet bottom bar
-    draw_bar(tri[2], tri[0], (235,240,255), bw, 1.0)         # white right bar
-    for (c1, c2, col) in ((tri[0], tri[1], (0,230,255)), (tri[1], tri[2], (190,80,255)), (tri[2], tri[0], (235,240,255))):
-        draw_bar(c1, c2, col, bw*2.6, 0.10, 0)               # glow pass
-    # center dot
+            for xx in (x-1, x):
+                if 0 <= xx < W:
+                    i4 = (y*W+xx)*4
+                    f = 0.09
+                    buf[i4] = int(buf[i4]*(1-f)+gcol[0]*f); buf[i4+1] = int(buf[i4+1]*(1-f)+gcol[1]*f); buf[i4+2] = int(buf[i4+2]*(1-f)+gcol[2]*f)
+        yy = int(k*step)
+        for x in range(W):
+            for yyy in (yy-1, yy):
+                if 0 <= yyy < H:
+                    i4 = (yyy*W+x)*4
+                    f = 0.09
+                    buf[i4] = int(buf[i4]*(1-f)+gcol[0]*f); buf[i4+1] = int(buf[i4+1]*(1-f)+gcol[1]*f); buf[i4+2] = int(buf[i4+2]*(1-f)+gcol[2]*f)
+
+def emblem_polys(cx, cy, R):
+    white = [(193,38),(348,318),(178,318),(148,373),(448,373),(263,38)]
+    black = [(448,373),(148,373),(233,223),(198,158),(43,438),(418,438)]
+    gray  = [(43,438),(198,158),(283,318),(348,318),(193,38),(8,378)]
+    raw = [white, black, gray]
+    xs = [p[0] for h in raw for p in h]; ys = [p[1] for h in raw for p in h]
+    w0, h0 = max(xs)-min(xs), max(ys)-min(ys)
+    k = (R*2.0) / h0
+    ox = cx - (min(xs)+w0/2)*k
+    oy = cy - (min(ys)+h0/2)*k
+    return [[(p[0]*k+ox, p[1]*k+oy) for p in h] for h in raw]
+
+def render_emblem(W, H, R, bg=True, ss=3):
+    S = ss
+    Ws, Hs = W*S, H*S
+    cxc, cyc = Ws/2, Hs/2 - Hs*0.012
+    Rs = R * S
+    buf = bytearray(Ws*Hs*4)
+    if bg:
+        draw_bg(buf, Ws, Hs)
+        draw_glow(buf, Ws, Hs, cxc, cyc + Rs*0.18, Rs*1.55, (30, 150, 200), 0.5)
+        draw_glow(buf, Ws, Hs, cxc - Rs*0.3, cyc - Rs*0.25, Rs*0.9, (90, 40, 160), 0.35)
+    hexes = emblem_polys(cxc, cyc, Rs)
+    cols = [CYAN, VIOLET, ICE]
+    for idx in (0, 1, 2):
+        bright, dark = bar_faces(hexes[idx])
+        bc = tuple(min(255, int(c*1.18)) for c in cols[idx])
+        dc = tuple(int(c*0.55) for c in cols[idx])
+        fill_convex(buf, Ws, Hs, bright, bc)
+        fill_convex(buf, Ws, Hs, dark, dc)
+    for idx in (0, 1, 2):
+        oc = tuple(min(255, int(c*1.35+30)) for c in cols[idx])
+        stroke_poly(buf, Ws, Hs, hexes[idx], oc, 1.6*S, 0.9)
+    if bg:
+        draw_glow(buf, Ws, Hs, cxc, cyc, Rs*1.25, (120, 220, 255), 0.10)
+    out = bytearray(W*H*4)
+    area = S*S
     for y in range(H):
         for x in range(W):
-            d = math.hypot(x-cx, y-(cy-8*s))
-            if d < 16*s:
-                setp(x, y, 255,255,255, 0.9*(1-d/(16*s)))
-    return px
+            r = g = b = a = 0
+            for sy in range(S):
+                row = (y*S+sy)*Ws
+                for sx in range(S):
+                    i4 = (row + x*S+sx)*4
+                    r += buf[i4]; g += buf[i4+1]; b += buf[i4+2]; a += buf[i4+3]
+            o4 = (y*W+x)*4
+            out[o4] = r//area; out[o4+1] = g//area; out[o4+2] = b//area; out[o4+3] = a//area
+    return out
 
-root = os.path.join(os.path.dirname(__file__), '..', 'app', 'src', 'main', 'res')
-sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
-print('rendering 512 master...')
-master = render(512)
-for d, s in sizes.items():
-    k = s/512
-    # simple nearest scale (master rendered big)
-    for name in ('ic_launcher', 'ic_launcher_round'):
-        w = h = s
-        out = bytearray(w*h*4)
-        for y in range(h):
-            src = int(min(511, y*512/h))
-            for x in range(w):
-                sx = int(min(511, x*512/w))
-                i = (src*512+sx)*4
-                j = (y*w+x)*4
-                out[j:j+4] = master[i:i+4]
-        write_png(os.path.join(root, f'mipmap-{d}', name+'.png'), w, h, out)
-    print('done', d)
-# adaptive icon foreground (transparent bg, glyph bigger)
-for d, s in sizes.items():
-    out = bytearray(108*108*4*36)  # placeholder handled below
-fsize = 432
-mask = render(fsize, rounded=False)
-# blank background out and keep glyph: rebuild simply with transparent corners off-screen
-for name, path in (('ic_launcher_foreground', 'drawable-anydpi'), ):
-    pass
-write_png(os.path.join(root, 'mipmap-xxxhdpi', 'ic_launcher_foreground.png'), 432, 432, mask)
-for d, s in sizes.items():
-    k = s/108*1.0
-    out = bytearray(int(s)*int(s)*4)
-    for y in range(int(s)):
-        src = int(min(431, y*432/int(s)))
-        for x in range(int(s)):
-            sx = int(min(431, x*432/int(s)))
-            i = (src*432+sx)*4
-            j = (y*int(s)+x)*4
-            out[j:j+4] = mask[i:i+4]
-    write_png(os.path.join(root, f'mipmap-{d}', 'ic_launcher_foreground.png'), int(s), int(s), list(out))
-print('all icons done')
+def round_mask(buf, W):
+    H = len(buf)//(W*4)
+    cx, cy = W/2, H/2
+    rad = W/2 - 2
+    for y in range(H):
+        for x in range(W):
+            d = math.hypot(x+0.5-cx, y+0.5-cy)
+            i4 = (y*W+x)*4
+            if d > rad + 1:
+                buf[i4] = buf[i4+1] = buf[i4+2] = buf[i4+3] = 0
+            elif d > rad - 1:
+                t = (rad + 1 - d) / 2.0
+                buf[i4+3] = int(buf[i4+3] * max(0.0, min(1.0, t)))
+
+def scale_box(src, sw, sh, dw, dh):
+    out = bytearray(dw*dh*4)
+    for y in range(dh):
+        sy0 = y*sh//dh; sy1 = max(sy0+1, (y+1)*sh//dh)
+        for x in range(dw):
+            sx0 = x*sw//dw; sx1 = max(sx0+1, (x+1)*sw//dw)
+            r = g = b = a = n = 0
+            for yy in range(sy0, sy1):
+                base = yy*sw
+                for xx in range(sx0, sx1):
+                    i4 = (base+xx)*4
+                    r += src[i4]; g += src[i4+1]; b += src[i4+2]; a += src[i4+3]; n += 1
+            o4 = (y*dw+x)*4
+            out[o4] = r//n; out[o4+1] = g//n; out[o4+2] = b//n; out[o4+3] = a//n
+    return out
+
+if __name__ == '__main__':
+    root = os.path.join(os.path.dirname(__file__), '..', 'app', 'src', 'main', 'res')
+    sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+    print('rendering master (512, x3 supersample)...')
+    master = render_emblem(512, 512, 168, bg=True)
+    write_png('/tmp/icon_master.png', 512, 512, master)
+    for d, s in sizes.items():
+        for name, circ in (('ic_launcher', False), ('ic_launcher_round', True)):
+            img = scale_box(master, 512, 512, s, s)
+            if circ: round_mask(img, s)
+            write_png(os.path.join(root, f'mipmap-{d}', name+'.png'), s, s, img)
+        print('done', d)
+    fsizes = {'mdpi':108,'hdpi':162,'xhdpi':216,'xxhdpi':324,'xxxhdpi':432}
+    print('rendering foreground master (432, x3 supersample)...')
+    fg = render_emblem(432, 432, 118, bg=False)
+    for d, s in fsizes.items():
+        img = scale_box(fg, 432, 432, s, s)
+        write_png(os.path.join(root, f'mipmap-{d}', 'ic_launcher_foreground.png'), s, s, img)
+        print('fg done', d)
+    print('all icons done')
