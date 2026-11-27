@@ -31,8 +31,9 @@ assets: every mesh, shader, sound and level is generated procedurally in code.
 - **Procedural original audio** — synthesis on `AudioTrack`: ambient 4-voice
   drone pad loop plus movement/portal/gravity/phase/win/click SFX, all computed
   at runtime. Music/SFX volume sliders and mute.
-- **Persistent save** — campaign progress, 3-star ratings, 21 achievements,
-  settings, custom levels, full gameplay statistics (JSON in private storage).
+- **Persistent save** — campaign progress, 3-star ratings, per-level best
+  move counts, 21 achievements, settings, custom levels, total playtime and
+  full gameplay statistics (JSON in private storage).
 - Animated main menu, world/level select, pause menu, completion screen with
   star scoring vs the solver's optimal line, hints, stats, help screen.
 
@@ -59,6 +60,9 @@ Requirements: JDK 17, Android SDK (platform 34, build-tools 34). See
 ```
 
 APKs land in `app/build/outputs/apk/…` and prebuilt copies in `dist/`.
+Every push to `main` is also built by GitHub Actions
+(`.github/workflows/android.yml`), which runs the test suite and uploads both
+APKs as workflow artifacts.
 
 ## Project structure
 

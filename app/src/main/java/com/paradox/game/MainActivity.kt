@@ -97,6 +97,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        if (::app.isInitialized) app.accruePlaytime()
         save.save()
         audio.pause()
         glView.onPause()

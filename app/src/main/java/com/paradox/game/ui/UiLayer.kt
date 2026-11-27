@@ -380,7 +380,11 @@ class UiLayer(private val app: GameApp) {
             button(lvl.name, 24f * s, y, cw, 62f * s, if (stars > 0) cyan else violet, {
                 app.startLevel(lvl, Mode.CAMPAIGN)
                 goto(Screen.PLAY)
-            }, sub = "PAR " + lvl.par + "   MOVE LIMIT -  " + if (stars == 0) "UNSOLVED" else "BEST " + stars + "*")
+            }, sub = {
+                val best = app.save.data.bestMoves[lvl.id]
+                if (stars == 0) "PAR " + lvl.par + " - UNSOLVED"
+                else "PAR " + lvl.par + " - BEST " + stars + "* IN " + (best ?: "?") + " MOVES"
+            }())
             val ss = 14f * s
             for (k in 0..2) {
                 pFill.color = if (k < stars) 0xFFFFD54F.toInt() else 0x22FFFFFF.toInt()
@@ -597,7 +601,8 @@ class UiLayer(private val app: GameApp) {
         pText.color = cyan
         pText.textAlign = Paint.Align.CENTER
         val opt = app.solutionLength
-        canvas.drawText("MOVES " + l.state.moves + "   PAR " + lvl.par + (if (opt > 0) "   OPTIMAL " + opt else ""), w / 2, h * 0.40f, pText)
+        val best = app.save.data.bestMoves[lvl.id]
+        canvas.drawText("MOVES " + l.state.moves + "   PAR " + lvl.par + (if (opt > 0) "   OPTIMAL " + opt else "") + (if (best != null && best < l.state.moves) "   BEST " + best else ""), w / 2, h * 0.40f, pText)
         pText.textAlign = Paint.Align.LEFT
         val bw = min(400f * s, w * 0.6f)
         val x = w / 2 - bw / 2
@@ -669,7 +674,9 @@ class UiLayer(private val app: GameApp) {
         y += 60f * s
         toggle("HINTS", d.hints, x, y, bw) { v -> d.hints = v; app.save.save() }
         y += 80f * s
-        button("STATS: " + app.save.data.stats.wins + " WINS - " + app.save.data.stats.plays + " RUNS", x, y, bw, 48f * s, 0xFF90A4AE.toInt(), { }, dim = true)
+        val hours = app.save.data.stats.playtimeMs / 3600000
+        val mins = (app.save.data.stats.playtimeMs / 60000) % 60
+        button("STATS: " + app.save.data.stats.wins + " WINS - " + app.save.data.stats.plays + " RUNS - " + hours + "H " + mins + "M", x, y, bw, 48f * s, 0xFF90A4AE.toInt(), { }, dim = true)
         y += 58f * s
         button("RESET ALL PROGRESS", x, y, bw, 48f * s, 0xFFFF5252.toInt(), {
             if (resetArmed) {

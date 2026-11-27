@@ -11,14 +11,15 @@ class SaveProgressTest {
     @Test
     fun starProgressOnlyImproves() {
         val d = SaveData()
-        d.markComplete("w1l1", 2)
+        d.markComplete("w1l1", 2, 9)
         assertEquals(2, d.progress["w1l1"])
-        d.markComplete("w1l1", 1)
+        d.markComplete("w1l1", 1, 12)
         assertEquals(2, d.progress["w1l1"])
-        d.markComplete("w1l1", 3)
+        d.markComplete("w1l1", 3, 8)
         assertEquals(3, d.progress["w1l1"])
         assertEquals(3, d.starsTotal())
         assertEquals(1, d.completedCount())
+        assertEquals(8, d.bestMoves["w1l1"])
     }
 
     @Test

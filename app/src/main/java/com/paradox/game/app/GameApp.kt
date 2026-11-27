@@ -83,6 +83,7 @@ class GameApp(
     var challenge: ChallengeDef? = null
     var challengeFailed = false
     var elapsed = 0f
+    var sessionStart = System.currentTimeMillis()
     var endlessStreak = 0
     var hintShown = false
     var toast: String? = null
@@ -101,6 +102,14 @@ class GameApp(
     }
 
     private var lastCell: Vec3i = Vec3i.Zero
+
+    fun accruePlaytime() {
+        val now = System.currentTimeMillis()
+        if (now > sessionStart) {
+            save.data.stats.playtimeMs += now - sessionStart
+        }
+        sessionStart = now
+    }
 
     fun showToast(msg: String) {
         toast = msg
@@ -259,7 +268,7 @@ class GameApp(
             Mode.CAMPAIGN -> {
                 val stars = starsFor(st.moves)
                 if (stars == 3) save.data.stats.perfects++
-                save.data.markComplete(l.id, stars)
+                save.data.markComplete(l.id, stars, st.moves)
                 save.data.lastLevel = nextIdOf(l.id) ?: l.id
             }
             Mode.DAILY -> {
@@ -276,6 +285,7 @@ class GameApp(
             else -> {}
         }
         checkAchievements()
+        accruePlaytime()
         save.save()
         ui.onLevelComplete()
     }

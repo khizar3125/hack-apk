@@ -82,6 +82,32 @@
 QA re-run after the pass: `compileDebugKotlin` clean, 8/8 unit tests pass,
 debug + release APKs rebuilt, `apksigner verify` clean on both.
 
+## v1.2.0 realism pass (this release)
+
+- Lighting model upgraded in the fragment shader: Blinn-Phong specular
+  highlights from a key light plus a violet fill light, third bounce light,
+  height-based ambient occlusion, per-pixel gamma response.
+- Procedural surface detail: world-space panel grid lines and hashed
+  per-tile brightness variation on every walkable face (no textures needed).
+- Contact shadows: dark flattened shadow plates render beneath the player,
+  every pushable cube and the goal, grounding the objects visually.
+- Cinematic post-processing (composite pass): vignette, subtle chromatic
+  aberration towards screen edges, animated film grain, tonemapping.
+- New persistence: per-level BEST move count (shown in level select and on
+  the completion screen) and total playtime (shown in Settings).
+- New save-test coverage for best-move recording.
+- GitHub Actions workflow (.github/workflows/android.yml) builds, tests and
+  uploads both APKs as artifacts on every push to main.
+
+QA re-run: 8/8 unit tests, debug + release APKs rebuilt, apksigner verify
+clean on both, aapt badging confirms v1.2.0 (versionCode 3).
+
+Realism note (honest): the game uses a stylized neon-noir look achieved
+with per-pixel lighting, AO, specular, shadows and post-processing - all
+procedural, no image assets. It is not photorealistic; photorealism is not
+achievable without texture assets or a heavier renderer, and per the brief
+every visual is generated in code.
+
 ## Device testing caveat
 
 No emulator/device was available in the build environment, so touch handling,

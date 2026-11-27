@@ -17,11 +17,13 @@ class Stats(
     var endlessBest: Int = 0,
     var perfects: Int = 0,
     var dailyStreakBest: Int = 0,
+    var playtimeMs: Long = 0,
     val dailyDone: LinkedHashSet<Long> = LinkedHashSet()
 )
 
 class SaveData {
     val progress = LinkedHashMap<String, Int>()
+    val bestMoves = LinkedHashMap<String, Int>()
     var lastLevel: String? = null
     val achievements = LinkedHashSet<String>()
     val custom = ArrayList<String>()
@@ -33,9 +35,11 @@ class SaveData {
     fun starsTotal(): Int = progress.values.sum()
     fun completedCount(): Int = progress.size
 
-    fun markComplete(id: String, stars: Int) {
+    fun markComplete(id: String, stars: Int, moves: Int) {
         val old = progress[id] ?: 0
         if (stars > old) progress[id] = stars
+        val oldBest = bestMoves[id]
+        if (oldBest == null || moves < oldBest) bestMoves[id] = moves
     }
 
     fun toJson(): JSONObject {
@@ -44,6 +48,9 @@ class SaveData {
         for ((k, v) in progress) p.put(k, v)
         o.put("progress", p)
         o.put("lastLevel", lastLevel ?: "")
+        val bm = JSONObject()
+        for ((k, v) in bestMoves) bm.put(k, v)
+        o.put("bestMoves", bm)
         o.put("achievements", org.json.JSONArray(achievements.toList()))
         o.put("custom", org.json.JSONArray(custom))
         o.put("music", settings.music.toDouble())
@@ -61,6 +68,7 @@ class SaveData {
         o.put("endlessBest", stats.endlessBest)
         o.put("perfects", stats.perfects)
         o.put("dailyStreakBest", stats.dailyStreakBest)
+        o.put("playtimeMs", stats.playtimeMs)
         o.put("dailyDone", org.json.JSONArray(stats.dailyDone.map { it }))
         o.put("dailyLastDay", dailyLastDay)
         o.put("dailyCompletedToday", dailyCompletedToday)
@@ -70,6 +78,8 @@ class SaveData {
     fun fromJson(o: JSONObject) {
         val p = o.optJSONObject("progress")
         if (p != null) for (k in p.keys()) progress[k] = p.optInt(k, 0)
+        val bm = o.optJSONObject("bestMoves")
+        if (bm != null) for (k in bm.keys()) bestMoves[k] = bm.optInt(k, 0)
         val ll = o.optString("lastLevel", "")
         if (ll.isNotEmpty()) lastLevel = ll
         val a = o.optJSONArray("achievements")
@@ -91,6 +101,7 @@ class SaveData {
         stats.endlessBest = o.optInt("endlessBest", 0)
         stats.perfects = o.optInt("perfects", 0)
         stats.dailyStreakBest = o.optInt("dailyStreakBest", 0)
+        stats.playtimeMs = o.optLong("playtimeMs", 0)
         val dd = o.optJSONArray("dailyDone")
         if (dd != null) for (i in 0 until dd.length()) stats.dailyDone.add(dd.optLong(i))
         dailyLastDay = o.optLong("dailyLastDay", -1)

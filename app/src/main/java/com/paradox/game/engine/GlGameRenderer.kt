@@ -412,21 +412,44 @@ class GlGameRenderer : GLSurfaceView.Renderer {
             uniform vec3 uFogColor;
             uniform float uFogNear;
             uniform float uFogFar;
+            float hash(vec3 p) {
+                p = fract(p * 0.3183099 + vec3(0.1, 0.17, 0.13));
+                p *= 17.0;
+                return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+            }
             void main() {
                 vec3 n = normalize(vNormal);
                 vec3 l1 = normalize(vec3(0.45, 1.0, 0.3));
                 vec3 l2 = normalize(vec3(-0.7, 0.25, -0.6));
+                vec3 l3 = normalize(vec3(0.2, -0.4, -0.9));
                 float d1 = max(dot(n, l1), 0.0);
                 float d2 = max(dot(n, l2), 0.0);
+                float d3 = max(dot(n, l3), 0.0);
                 vec3 viewDir = normalize(uEye - vWorld);
                 float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
                 vec3 base = vColor * uTint;
-                vec3 lit = base * (0.22 + d1 * 0.85 + d2 * 0.3);
-                vec3 rim = fres * vec3(0.11, 0.34, 0.46);
-                vec3 col = mix(lit, base * 1.15, uEmissive) + rim * (1.0 - uEmissive * 0.45);
+                float ao = clamp(vWorld.y * 0.06 + 0.82, 0.75, 1.0);
+                vec3 lit = base * (0.20 + d1 * 0.85 + d2 * 0.30 + d3 * 0.12) * ao;
+                vec3 h1 = normalize(l1 + viewDir);
+                float spec = pow(max(dot(n, h1), 0.0), 42.0) * 0.55;
+                vec3 h2 = normalize(l2 + viewDir);
+                spec += pow(max(dot(n, h2), 0.0), 24.0) * 0.22 * vec3(0.6, 0.35, 1.0);
+                float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
+                vec3 rimC = rim * vec3(0.11, 0.34, 0.46);
+                vec3 col = mix(lit, base * 1.15, uEmissive) + rimC * (1.0 - uEmissive * 0.45);
+                col += mix(spec, base * spec * 2.2, 0.5) * (1.0 - uEmissive * 0.6);
+                if (uEmissive < 0.02 && n.y > 0.9) {
+                    vec2 f = abs(fract(vWorld.xz) - 0.5);
+                    float line = smoothstep(0.42, 0.5, max(f.x, f.y));
+                    col *= 1.0 - line * 0.22;
+                    float grain = hash(floor(vWorld.xz * 2.0));
+                    col *= 0.94 + grain * 0.09;
+                }
                 float dist = length(uEye - vWorld);
                 float fog = clamp((dist - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
-                gl_FragColor = vec4(mix(col, uFogColor, fog * 0.9), 1.0);
+                col = mix(col, uFogColor, fog * 0.9);
+                col = pow(max(col, 0.0), vec3(0.92));
+                gl_FragColor = vec4(col, 1.0);
             }
         """
         private val PARTICLE_VS = """
@@ -480,12 +503,23 @@ class GlGameRenderer : GLSurfaceView.Renderer {
             uniform sampler2D uScene;
             uniform sampler2D uBloom;
             uniform float uIntensity;
+            float hash2(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
             void main() {
                 vec3 c = texture2D(uScene, vUV).rgb;
                 vec3 b = texture2D(uBloom, vUV).rgb;
                 vec3 hdr = c + b * uIntensity;
                 vec3 mapped = hdr / (1.0 + hdr * 0.25);
-                mapped = pow(mapped, vec3(0.92));
+                vec2 d = vUV - 0.5;
+                float vig = smoothstep(0.85, 0.25, length(d));
+                mapped *= mix(0.62, 1.06, vig);
+                float ca = 0.0022 * length(d);
+                mapped.r *= 1.0 + ca;
+                mapped.b *= 1.0 - ca * 0.7;
+                float g = (hash2(vUV * vec2(913.0, 719.0)) - 0.5) * 0.035;
+                mapped += g;
+                mapped = pow(max(mapped, 0.0), vec3(0.95));
                 gl_FragColor = vec4(mapped, 1.0);
             }
         """

@@ -174,6 +174,7 @@ class SceneRenderer(val gl: GlGameRenderer) {
         pb.cube(0.30f, -0.05f, 0f, 0.06f, 0.16f, 0.10f, Vec3(0.4f, 0.9f, 1.2f), Vec3(0.3f, 0.7f, 0.9f))
         pb.cube(0f, 0.50f, 0f, 0.02f, 0.09f, 0.02f, Vec3(0.6f, 1f, 1f), Vec3(0.5f, 0.9f, 1f))
         pb.cube(0f, 0.60f, 0f, 0.05f, 0.045f, 0.05f, Vec3(0.3f, 1.4f, 1.5f), Vec3(0.2f, 1.2f, 1.3f))
+        pb.cube(0f, 0.02f, 0.21f, 0.07f, 0.07f, 0.035f, Vec3(0.3f, 1.3f, 1.6f), Vec3(0.2f, 1.0f, 1.3f))
         playerBody = pb.build()
 
         val gp = MeshBuilder()
@@ -305,6 +306,16 @@ class SceneRenderer(val gl: GlGameRenderer) {
         seamMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.85f) }
         wallMesh?.let { gl.drawMesh(it, Mat4.identity(), pal[1] * 0.9f, 0.05f) }
         wallGlowMesh?.let { gl.drawMesh(it, Mat4.identity(), Vec3(1f, 1f, 1f), 0.7f) }
+
+        val shadowCol = Vec3(0.012f, 0.016f, 0.028f)
+        if (!st.dead) {
+            val pp = anim.visualPos()
+            gl.drawCube(Vec3(pp.x + 0.5f, 0.035f, pp.z + 0.5f), Vec3(0.46f, 0.012f, 0.46f), 0f, shadowCol, 0f)
+        }
+        for (cb in st.cubes) {
+            gl.drawCube(cb.toV3() + Vec3(0.5f, 0.03f, 0.5f), Vec3(0.40f, 0.012f, 0.40f), 0f, shadowCol, 0f)
+        }
+        gl.drawCube(s.goal.toV3() + Vec3(0.5f, 0.028f, 0.5f), Vec3(0.34f, 0.01f, 0.34f), 0f, shadowCol, 0f)
 
         for (b in s.bridges) {
             val solid = st.phase in b.solidPhases
