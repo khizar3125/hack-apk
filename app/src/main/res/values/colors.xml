@@ -1,6 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="icon_bg">#05070D</color>
-    <color name="accent">#00E6FF</color>
-    <color name="accent_violet">#BE50FF</color>
-    <color name="bg">#05070D</color>
+    <color name="bg_deep">#070A1C</color>
+    <color name="bg_mid">#0D1130</color>
+    <color name="bg_top">#141A3A</color>
+    <color name="accent">#FF4D6D</color>
+    <color name="accent_light">#FF7597</color>
+    <color name="accent_soft">#33FF4D6D</color>
+    <color name="text_primary">#F4F6FF</color>
+    <color name="text_secondary">#9AA3C7</color>
+    <color name="card">#171D3D</color>
+    <color name="stroke">#2A3160</color>
+    <color name="zone_green">#4ADE80</color>
+    <color name="zone_amber">#FBBF24</color>
+    <color name="zone_red">#F87171</color>
+    <color name="ic_launcher_background">#0D1130</color>
 </resources>

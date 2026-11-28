@@ -1,3 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PARADOX</string>
+    <string name="app_name">Camera Pulse</string>
+    <string name="tagline">Fingertip se dil ki dhadkan — bina kisi sensor, bina AI. Sirf camera aur flashlight.</string>
+    <string name="how_to_title">Kaise use karein</string>
+    <string name="how_to_steps">1. Start dabao aur camera permission do\n2. Index finger se back camera + flash ko poora cover karo\n3. 30 second tak haath stable rakho\n4. Bas — tumhara heart rate ready!</string>
+    <string name="start_measurement">Start Measurement</string>
+    <string name="measuring">Measuring…</string>
+    <string name="bpm_label">BPM</string>
+    <string name="place_finger">Finger se camera + flash cover karo</string>
+    <string name="detecting">Detecting pulse…</string>
+    <string name="weak_signal">Signal weak hai — finger poora cover karo aur haath stable rakho</string>
+    <string name="cancel">Cancel</string>
+    <string name="your_heart_rate">Your Heart Rate</string>
+    <string name="measure_again">Measure Again</string>
+    <string name="done">Done</string>
+    <string name="recent_readings">Recent Readings</string>
+    <string name="clear_history">Clear</string>
+    <string name="no_history">Abhi koi reading nahi. Pehla measurement karo!</string>
+    <string name="camera_needed">Camera permission zaroori hai — bina camera pulse detect nahi ho sakta.</string>
+    <string name="medical_note">Yeh fitness ke liye hai, medical device nahi.</string>
+    <string name="bpm_value">%1$d BPM</string>
+    <string name="zone_resting">Resting / Low</string>
+    <string name="zone_normal">Normal</string>
+    <string name="zone_elevated">Elevated</string>
+    <string name="zone_high">High</string>
+    <string name="seconds_left">%1$ds left</string>
 </resources>
