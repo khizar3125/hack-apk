@@ -163,13 +163,16 @@ class GameApp(
 
     private fun computeSolutionAsync(spec: LevelSpec) {
         Thread {
-            val r = Solver.solve(spec, maxNodes = 200_000)
-            if (r.solvable) solutionLength = r.actions.size
-            if (mode == Mode.CREATIVE_TEST) {
-                editor.lastTestOk = r.solvable && r.actions.size >= 2 && editor.pendingSaveSpec != null
-                activity.runOnUiThread {
-                    showToast(if (editor.lastTestOk) "SOLVABLE IN " + r.actions.size + " MOVES - SAVE IS LIVE" else "UNSOLVABLE - FIX THE LEVEL")
+            try {
+                val r = Solver.solve(spec, maxNodes = 200_000)
+                if (r.solvable) solutionLength = r.actions.size
+                if (mode == Mode.CREATIVE_TEST) {
+                    editor.lastTestOk = r.solvable && r.actions.size >= 2 && editor.pendingSaveSpec != null
+                    activity.runOnUiThread {
+                        showToast(if (editor.lastTestOk) "SOLVABLE IN " + r.actions.size + " MOVES - SAVE IS LIVE" else "UNSOLVABLE - FIX THE LEVEL")
+                    }
                 }
+            } catch (t: Throwable) {
             }
         }.start()
     }

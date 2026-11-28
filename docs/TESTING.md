@@ -189,3 +189,34 @@ audio playback and GL rendering were verified statically and via unit tests of
 the underlying logic rather than on hardware. The renderer uses only widely
 available GLES 2.0 features (FBOs, point sprites) and defensive GL state
 management.
+
+## v1.3.2 crash-on-play fix (this release)
+
+Symptom: the app launched, but tapping through menu → worlds → levels into
+play closed the app after the third tap.
+
+Root cause: cross-thread mutation of shared collections between the UI thread
+and the GL render thread. The GL thread iterates the particle list every frame
+while UI-thread events (push/portal/gravity/death bursts) appended to it, and
+level rebuilds cleared/modified the door/switch animation maps and refilled the
+entity list while the GL thread was iterating them. Either pattern can throw
+ConcurrentModificationException on the render thread, which is fatal to the
+process.
+
+Fixes:
+
+- `spawnParticle` now enqueues into a `ConcurrentLinkedQueue`; the GL thread
+  drains the queue once per frame before updating/particle-buffering the list.
+  The particle list is no longer touched off the render thread.
+- `SceneRenderer.rebuild()` builds the entity list and fresh door/switch
+  animation maps locally and swaps the fields in atomically at the end, so the
+  render thread never iterates a list that is being refilled.
+- The background solver thread is wrapped in a catch-all so a solver failure
+  can no longer terminate the process.
+- A global uncaught-exception handler is installed in `MainActivity.onCreate`
+  and writes the full stack trace to `filesDir/crash.txt` before delegating to
+  the default handler, so any future crash on a device leaves a shareable trace.
+
+Verification: `testDebugUnitTest assembleDebug assembleRelease` clean, 8/8
+tests pass, `apksigner verify` passes for both APKs, badging reports
+versionCode 6 / versionName 1.3.2. Shader validation remains CI-enforced.

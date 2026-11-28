@@ -198,7 +198,8 @@ class GlGameRenderer : GLSurfaceView.Renderer {
 
     private val particleBuffer: FloatBuffer = ByteBuffer.allocateDirect(2048 * 7 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
     private var particleCount = 0
-    val particles = ArrayList<Particle>(256)
+    private val particles = ArrayList<Particle>(256)
+    private val spawnQueue = java.util.concurrent.ConcurrentLinkedQueue<Particle>()
 
     var clearColor = Vec3(0.012f, 0.016f, 0.04f)
     var fogNear = 30f
@@ -211,8 +212,7 @@ class GlGameRenderer : GLSurfaceView.Renderer {
     var measuredFps = 60f
 
     fun spawnParticle(p: Particle) {
-        camera.hashCode()
-        if (particles.size < 900) particles.add(p)
+        if (spawnQueue.size < 900) spawnQueue.add(p)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -279,6 +279,10 @@ class GlGameRenderer : GLSurfaceView.Renderer {
         }
         lastFrameNanos = now
         val dt = 1f / maxOf(measuredFps, 20f, 1f)
+        while (true) {
+            val p = spawnQueue.poll() ?: break
+            if (particles.size < 900) particles.add(p)
+        }
         for (p in particles) {
             p.life -= dt
             p.pos = p.pos + p.vel * dt

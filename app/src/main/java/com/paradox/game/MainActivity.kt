@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.opengl.GLSurfaceView
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -48,6 +49,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        installCrashLogger()
 
         save = SaveManager(filesDir)
         save.load()
@@ -81,6 +83,19 @@ class MainActivity : Activity() {
         frame.addView(overlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(frame)
         immersive()
+    }
+
+    private fun installCrashLogger() {
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                java.io.File(filesDir, "crash.txt").writeText(
+                    "thread=" + t.name + "\n" + Log.getStackTraceString(e)
+                )
+            } catch (ignored: Throwable) {
+            }
+            prev?.uncaughtException(t, e)
+        }
     }
 
     private fun immersive() {

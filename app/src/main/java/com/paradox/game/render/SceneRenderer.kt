@@ -136,7 +136,7 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
         pillarMesh = plb.build()
         pillarGlow = plg.build()
 
-        entities = ArrayList()
+        val ents = ArrayList<Entity>()
         val pr = MeshBuilder()
         pr.ring(0f, 0.14f, 0f, 0.36f, 0.05f, PORTAL_COL, 10)
         pr.cube(0f, 0.14f, 0f, 0.30f, 0.06f, 0.30f, PORTAL_COL * 1.4f, PORTAL_COL)
@@ -160,13 +160,13 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
                 else -> 0f
             }
             val flat = g.gravity <= 1
-            entities.add(Entity(if (flat) padFlat!! else padArrow!!, g.cell, KIND_PAD, g.gravity, rot))
+            ents.add(Entity(if (flat) padFlat!! else padArrow!!, g.cell, KIND_PAD, g.gravity, rot))
         }
 
         for (p in s.portals) {
             if (p.size >= 6) {
-                entities.add(Entity(portalRing!!, Vec3i(p[0], p[1], p[2]), KIND_PORTAL, 0))
-                entities.add(Entity(portalRing!!, Vec3i(p[3], p[4], p[5]), KIND_PORTAL, 0))
+                ents.add(Entity(portalRing!!, Vec3i(p[0], p[1], p[2]), KIND_PORTAL, 0))
+                ents.add(Entity(portalRing!!, Vec3i(p[3], p[4], p[5]), KIND_PORTAL, 0))
             }
         }
 
@@ -175,7 +175,7 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
             mb.cube(0f, 0.06f, 0f, 0.36f, 0.14f, 0.36f, Vec3(0.35f, 0.38f, 0.5f), Vec3(0.28f, 0.30f, 0.42f))
             mb.cube(0f, 0.20f, 0f, 0.26f, 0.07f, 0.26f, Vec3(1f, 0.85f, 0.35f), Vec3(0.85f, 0.65f, 0.2f))
             mb.ring(0f, 0.30f, 0f, 0.14f, 0.03f, Vec3(1f, 0.9f, 0.4f), 6)
-            entities.add(Entity(mb.build(), sw.cell, KIND_SWITCH, 0))
+            ents.add(Entity(mb.build(), sw.cell, KIND_SWITCH, 0))
         }
 
         for (c in s.cubes) {
@@ -184,7 +184,7 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
             val gb = MeshBuilder()
             gb.cube(0f, 0.41f, 0f, 0.28f, 0.03f, 0.28f, Vec3(1f, 0.9f, 0.5f), Vec3(1f, 0.85f, 0.4f))
             gb.cube(0f, 0f, 0f, 0.16f, 0.17f, 0.16f, CUBE_COL * 1.5f, CUBE_COL * 1.2f)
-            entities.add(Entity(mb.build(), c, KIND_CUBE, 0, glow = gb.build()))
+            ents.add(Entity(mb.build(), c, KIND_CUBE, 0, glow = gb.build()))
         }
 
         for (r in s.rotators) {
@@ -193,7 +193,7 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
                 mb.cube(t.x + 0.5f - r.pivot.x - 0.5f, (t.y - r.pivot.y).toFloat(), t.z + 0.5f - r.pivot.z - 0.5f, 0.47f, 0.15f, 0.47f, Vec3(0.9f, 0.4f, 1f), Vec3(0.6f, 0.25f, 0.8f))
             }
             mb.octahedron(0f, 0.55f, 0f, 0.16f, Vec3(1f, 0.6f, 1f), Vec3(0.7f, 0.3f, 0.9f))
-            entities.add(Entity(mb.build(), r.pivot, KIND_ROTATOR, 0))
+            ents.add(Entity(mb.build(), r.pivot, KIND_ROTATOR, 0))
         }
 
         val pb = MeshBuilder()
@@ -219,8 +219,9 @@ class SceneRenderer(val gl: GlGameRenderer, private val context: Context? = null
         o2.octahedron(0f, 0f, 0f, 1f, Vec3(0.2f, 0.3f, 0.45f), Vec3(0.14f, 0.22f, 0.36f))
         bgOcta2 = o2.build()
 
-        doorAnim.clear()
-        switchAnim.clear()
+        doorAnim = HashMap()
+        switchAnim = HashMap()
+        entities = ents
         yaw = targetYaw + 2.6f
         pitch = 1.25f
         dist = targetDist * 2.1f
